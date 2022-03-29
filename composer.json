@@ -1,0 +1,39 @@
+{
+    "name": "mediadreams/md_saml",
+    "type": "typo3-cms-extension",
+    "description": "TYPO3 SSO Login with SAML authentication.",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Christoph Daecke",
+			"role": "Developer"
+		}
+	],
+	"keywords": [
+		"TYPO3",
+		"TYPO3 CMS",
+		"extension",
+		"sso",
+		"saml",
+		"adfs"
+	],
+	"support": {
+		"issues": "https://github.com/cdaecke/md_saml/issues",
+		"source": "https://github.com/cdaecke/md_saml"
+	},
+    "require": {
+        "typo3/cms-core": "^10.4",
+        "php": ">=7.3",
+		"onelogin/php-saml": "^4.0"
+	},
+	"extra": {
+		"typo3/cms": {
+			"extension-key": "md_saml"
+		}
+	},
+    "autoload": {
+        "psr-4": {
+            "Mediadreams\\MdSaml\\": "Classes"
+        }
+    }
+}

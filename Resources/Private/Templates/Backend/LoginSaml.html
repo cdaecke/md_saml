@@ -1,0 +1,24 @@
+<f:layout name="Login" />
+
+<f:section name="loginFormFields">
+    <div class="form-group t3js-login-username-section" id="t3-login-username-section">
+        <f:if condition="{loginError}">
+            <div class="t3js-login-error" id="t3-login-error">
+                <div class="alert alert-danger">
+                    <strong><f:translate key="login.error.headline" extensionName="md_saml" /></strong>
+                    <p><f:translate key="login.error.message" extensionName="md_saml" /></p>
+                </div>
+            </div>
+        </f:if>
+
+        <f:translate key="login.md_saml" extensionName="md_saml" />
+        <input type="hidden" id="login-provider" name="login-provider" value="md_saml"/>
+    </div>
+</f:section>
+<f:section name="ResetPassword">
+    <div class="forgot-password">
+        <div class="text-right">
+            <f:be.link route="password_forget" parameters="{loginProvider: loginProviderIdentifier}">{f:translate(key: 'login.password_forget')}</f:be.link>
+        </div>
+    </div>
+</f:section>

@@ -1,0 +1,17 @@
+<xliff version="1.0">
+	<file source-language="en" datatype="plaintext" original="messages" date="2022-03-11T17:33:21Z" product-name="md_saml">
+		<header/>
+		<body>
+			<trans-unit id="login.md_saml" xml:space="preserve">
+                <source>Single Sign-on with SAML</source>
+            </trans-unit>
+
+			<trans-unit id="login.error.headline" xml:space="preserve">
+                <source>Login error</source>
+            </trans-unit>
+			<trans-unit id="login.error.message" xml:space="preserve">
+                <source>IdP returned an error. For details see error log or activate SAML debugging.</source>
+            </trans-unit>
+		</body>
+	</file>
+</xliff>
