@@ -59,7 +59,7 @@ class SamlMiddleware implements MiddlewareInterface
     {
         if (
             1648123062 == GeneralUtility::_GP('loginProvider')
-            && is_a($GLOBALS['BE_USER'], '\TYPO3\CMS\Core\Authentication\BackendUserAuthentication')
+            && isset($GLOBALS['BE_USER']->user)
         ) {
             if (null !== GeneralUtility::_GP('mdsamlmetadata')) {
                 try {
