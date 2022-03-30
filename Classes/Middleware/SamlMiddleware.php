@@ -57,32 +57,36 @@ class SamlMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (
-            1648123062 == GeneralUtility::_GP('loginProvider')
-            && isset($GLOBALS['BE_USER']->user)
-        ) {
+        if (1648123062 == GeneralUtility::_GP('loginProvider')) {
             if (null !== GeneralUtility::_GP('mdsamlmetadata')) {
-                try {
-                    $extSettings = $this->settingsService->getSettings();
-                    // Now we only validate SP settings
-                    $settings = new \OneLogin\Saml2\Settings($extSettings['saml'], true);
-                    $metadata = $settings->getSPMetadata();
-                    $errors = $settings->validateMetadata($metadata);
-                    if (empty($errors)) {
-                        $response = $this->responseFactory
-                            ->createResponse()
-                            ->withHeader('Content-Type', 'text/xml; charset=utf-8');
+                if (isset($GLOBALS['BE_USER']->user)) {
+                    try {
+                        $extSettings = $this->settingsService->getSettings();
+                        // Now we only validate SP settings
+                        $settings = new \OneLogin\Saml2\Settings($extSettings['saml'], true);
+                        $metadata = $settings->getSPMetadata();
+                        $errors = $settings->validateMetadata($metadata);
+                        if (empty($errors)) {
+                            $response = $this->responseFactory
+                                ->createResponse()
+                                ->withHeader('Content-Type', 'text/xml; charset=utf-8');
 
-                        $response->getBody()->write($metadata);
-                        return $response;
-                    } else {
-                        throw new \OneLogin\Saml2\Error(
-                            'Invalid SP metadata: ' . implode(', ', $errors),
-                            \OneLogin\Saml2\Error::METADATA_SP_INVALID
-                        );
+                            $response->getBody()->write($metadata);
+                            return $response;
+                        } else {
+                            throw new \OneLogin\Saml2\Error(
+                                'Invalid SP metadata: ' . implode(', ', $errors),
+                                \OneLogin\Saml2\Error::METADATA_SP_INVALID
+                            );
+                        }
+                    } catch (Exception $e) {
+                        echo $e->getMessage();
                     }
-                } catch (Exception $e) {
-                    echo $e->getMessage();
+                } else {
+                    $response = $this->responseFactory->createResponse();
+
+                    $response->getBody()->write('Please log into TYPO3!');
+                    return $response;
                 }
             }
         }
