@@ -1,6 +1,7 @@
 <?php
 
 return [
+    /*
     'frontend' => [
         'mdsaml/saml-authentication' => [
             'target' => \Mediadreams\MdSaml\Middleware\SamlMiddleware::class,
@@ -9,7 +10,7 @@ return [
             ],
         ],
     ],
-    /*
+    */
     'backend' => [
         'mdsaml/saml-authentication' => [
             'target' => \Mediadreams\MdSaml\Middleware\SamlMiddleware::class,
@@ -18,5 +19,4 @@ return [
             ],
         ],
     ],
-    */
 ];

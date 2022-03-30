@@ -57,7 +57,10 @@ class SamlMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (1648123062 == GeneralUtility::_GP('loginProvider')) {
+        if (
+            1648123062 == GeneralUtility::_GP('loginProvider')
+            && $GLOBALS['BE_USER'] instanceof \TYPO3\CMS\Backend\FrontendBackendUserAuthentication
+        ) {
             if (null !== GeneralUtility::_GP('mdsamlmetadata')) {
                 try {
                     $extSettings = $this->settingsService->getSettings();

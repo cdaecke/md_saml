@@ -29,7 +29,7 @@ plugin.tx_mdsaml {
       sp {
         // Identifier of the SP entity  (must be a URI)
         // ATTENTION: `baseurl` will be attached automatically
-        entityId = /index.php?loginProvider=1648123062&mdsamlmetadata
+        entityId = /typo3/index.php?loginProvider=1648123062&mdsamlmetadata
 
         // Specifies info about where and how the <AuthnResponse> message MUST be
         // returned to the requester, in this case our SP.
