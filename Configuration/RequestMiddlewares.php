@@ -3,7 +3,7 @@
 return [
     /*
     'frontend' => [
-        'mdsaml/saml-authentication' => [
+        'mdsaml/saml-data' => [
             'target' => \Mediadreams\MdSaml\Middleware\SamlMiddleware::class,
             'after' => [
                 'typo3/cms-frontend/tsfe',
@@ -12,9 +12,9 @@ return [
     ],
     */
     'backend' => [
-        'mdsaml/saml-authentication' => [
+        'mdsaml/saml-data' => [
             'target' => \Mediadreams\MdSaml\Middleware\SamlMiddleware::class,
-            'before' => [
+            'after' => [
                 'typo3/cms-backend/authentication',
             ],
         ],
