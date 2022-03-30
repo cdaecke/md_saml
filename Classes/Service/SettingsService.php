@@ -14,6 +14,7 @@ namespace Mediadreams\MdSaml\Service;
  *
  */
 
+use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
@@ -36,7 +37,7 @@ class SettingsService
     {
         // Backend mode, no TSFE loaded
         if (!isset($GLOBALS['TSFE'])) {
-            $typoScriptSetup = $this->getTypoScriptSetup(1);
+            $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
             $settings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
         } else {
             /** @var ConfigurationManager $configurationManager */
@@ -85,6 +86,28 @@ class SettingsService
         );
 
         return $settings;
+    }
+
+    /**
+     * Get root page ID according to calling url
+     *
+     * @return int|null
+     */
+    private function getRootPageId(): ?int
+    {
+        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY');
+
+        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
+        $allsites = $siteFinder->getAllSites();
+
+        /** @var \TYPO3\CMS\Core\Site\Entity\Site $site */
+        foreach ($allsites as $site) {
+            if ($site->getBase()->getHost() == $siteUrl) {
+                return $site->getRootPageId();
+            }
+        }
+
+        throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
     }
 
     /**
