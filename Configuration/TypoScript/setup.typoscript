@@ -331,13 +331,23 @@ plugin.tx_mdsaml {
 
     } // end saml
 
-    userDefaults {
-      usergroup =
-      lang =
-      db_mountpoints =
-      file_mountpoints =
+    // Configuration of backend users
+    beUser {
+      // Decide whether a new backend user should be created
+      createIfNotExist = 1
+
+      // This section allows you to set defaults for a newly created backend users
+      // You can add all fields of the database here
+      databaseDefaults {
+        usergroup =
+        lang =
+        db_mountpoints =
+        file_mountpoints =
+      }
     }
 
+    // Configuration of the returning parameters of the SSO.
+    // This array will be merged with `beUser.databaseDefaults`.
     transformationArr {
       username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname
       email = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress

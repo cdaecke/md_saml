@@ -129,7 +129,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 $record = $this->fetchUserRecord($user['username']);
                 if (is_array($record)) {
                     return $record;
-                } else {
+                } else if ($extSettings['beUser']['createIfNotExist'] == 1) {
                     return $this->createUser($user);
                 }
             }
@@ -198,7 +198,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $transformationArr = array_flip($extSettings['transformationArr']);
 
         // Add default values from TypoScript settings to user array
-        foreach ($extSettings['userDefaults'] as $key => $val) {
+        foreach ($extSettings['beUser']['databaseDefaults'] as $key => $val) {
             $key = trim($key);
             $val = trim($val);
 
