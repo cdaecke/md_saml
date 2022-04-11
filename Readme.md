@@ -112,10 +112,8 @@ In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookie
 <dl>
     <dt>Is is possible, to remove the default login with username and password?</dt>
     <dd>
-        Yes, just add following line in the `ext_localconf.php` of your the extension.
-        ```php
-        unset($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['backend']['loginProviders'][1433416747]);
-        ```
+        Yes, just add following line in the `ext_localconf.php` of your the extension:<br>
+        <pre><code>unset($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['backend']['loginProviders'][1433416747]);</code></pre>
     </dd>
 </dl>
 
