@@ -1,3 +1,10 @@
+name: TYPO3 Extension TER Release
+
+on:
+  push:
+    tags:
+      - '*'
+
 jobs:
   release-ter:
     name: TYPO3 TER release
