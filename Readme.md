@@ -8,7 +8,7 @@ TYPO3 login:
 <img src="./Documentation/Images/typo3_login.png?raw=true" alt="TYPO3 login" width="346" height="389" />
 
 ## Requirements
-- TYPO3 v10.4
+- TYPO3 v10.4 or v11.5
 
 ## Installation
 - Install the extension with the following composer command: `composer req mediadreams/md_saml`
@@ -104,9 +104,16 @@ Als letztes muss noch im Reiter `Bezeichner` der `Vertrauensstellung` im Feld `B
 Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
 
 ### TYPO3
-In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookieSameSite']` must be set to `lax`:
-
-    $GLOBALS['TYPO3_CONF_VARS']['BE']['cookieSameSite'] = 'lax'
+<ul>
+    <li>
+        In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
+        <pre><code>$GLOBALS['TYPO3_CONF_VARS']['BE']['cookieSameSite'] = 'lax'</code></pre>
+    </li>
+    <li>
+        In `Site Configuration` set the value of `Entry Point` (`base`) to a full qualified entry point.
+        For example set `https://www.domain.tld/` instead of just using `/`.
+    </li>
+</ul>
 
 ## FAQ
 <dl>
@@ -114,6 +121,11 @@ In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookie
     <dd>
         Yes, just add following line in the `ext_localconf.php` of your the extension:<br>
         <pre><code>unset($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['backend']['loginProviders'][1433416747]);</code></pre>
+    </dd>
+    <dt>I get a `1648646492 RuntimeException, The site configuration could not be resolved.`</dt>
+    <dd>
+        Make sure, that the domain of your website is configured in the site configuration
+        (`sites/identifier/config.yaml`) for `base`.
     </dd>
 </dl>
 
