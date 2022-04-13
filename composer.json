@@ -46,8 +46,8 @@
 		],
 		"build:ter:vendors": [
 			"(mkdir -p /tmp/vendors && cd /tmp/vendors && composer require onelogin/php-saml:^4.0 && composer global exec phar-composer build -v)",
-			"cp /tmp/vendors/vendors.phar .",
-			"echo \"require 'phar://' . \\TYPO3\\CMS\\Core\\Utility\\ExtensionManagementUtility::extPath('$(composer config extra.typo3/cms.extension-key)') . 'vendors.phar/vendor/autoload.php';\" >> ext_localconf.php"
+			"cp /tmp/vendors/vendors.phar ./Resources/Private/libraries.phar",
+			"echo \"require 'phar://' . \\TYPO3\\CMS\\Core\\Utility\\ExtensionManagementUtility::extPath('$(composer config extra.typo3/cms.extension-key)') . '/Resources/Private/libraries.phar/vendor/autoload.php';\" >> ext_localconf.php"
 		],
 		"deploy:ter:upload": [
 			"composer global exec -v -- tailor ter:publish --comment \"$(git tag -l --format='%(contents)' $TAG)\" $TAG"
