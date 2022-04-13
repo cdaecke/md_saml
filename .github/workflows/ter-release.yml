@@ -18,4 +18,4 @@ jobs:
         env:
           TYPO3_EXTENSION_KEY: ${{secrets.TYPO3_EXTENSION_KEY}}
           TAG: ${{env.GITHUB_REF_NAME}}
-        run: docker-compose run --rm app composer deploy:ter
+        run: composer deploy:ter
