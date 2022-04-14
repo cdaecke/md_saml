@@ -1,3 +1,9 @@
+# Version 1.0.5 (2022-04-14)
+[BUGFIX] update path in `build:ter:vendors` scripts in composer.json
+
+All changes
+https://github.com/cdaecke/md_saml/compare/1.0.4...1.0.5
+
 # Version 1.0.4 (2022-04-14)
 [TASK] update `build:ter:vendors` scripts in composer.json, because `vendors.phar` is not deployed by Tylor (https://github.com/TYPO3/tailor/issues/53)
 
