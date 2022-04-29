@@ -1,3 +1,9 @@
+# Version 1.0.6 (2022-04-29)
+[BUGFIX] update github workflow for TER deployment
+
+All changes
+https://github.com/cdaecke/md_saml/compare/1.0.5...1.0.6
+
 # Version 1.0.5 (2022-04-14)
 [BUGFIX] update path in `build:ter:vendors` scripts in composer.json
 
