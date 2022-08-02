@@ -59,9 +59,16 @@ class SamlMiddleware implements MiddlewareInterface
     {
         if (1648123062 == GeneralUtility::_GP('loginProvider')) {
             if (null !== GeneralUtility::_GP('mdsamlmetadata')) {
+                $loginType = GeneralUtility::_GP('loginType');
+                if ($loginType == 'frontend') {
+                    $loginType = 'FE';
+                } elseif ($loginType == 'backend') {
+                    $loginType = 'BE';
+                }
+
                 if (isset($GLOBALS['BE_USER']->user)) {
                     try {
-                        $extSettings = $this->settingsService->getSettings();
+                        $extSettings = $this->settingsService->getSettings($loginType);
                         // Now we only validate SP settings
                         $settings = new \OneLogin\Saml2\Settings($extSettings['saml'], true);
                         $metadata = $settings->getSPMetadata();

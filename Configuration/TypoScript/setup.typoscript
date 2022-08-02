@@ -6,6 +6,61 @@ plugin.tx_mdsaml {
   settings {
     mdsamlSpBaseUrl =
 
+    // Backend users
+    be_users {
+      // Identifier of the SP entity  (must be a URI)
+      // ATTENTION: `baseurl` will be attached automatically
+      saml.sp.entityId = /typo3/index.php?loginProvider=1648123062&mdsamlmetadata
+      saml.sp.assertionConsumerService.url = /typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs
+
+      // Decide whether a new backend user should be created
+      createIfNotExist = 1
+
+      transformationArr {
+        username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname
+        email = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
+        realName = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
+      }
+
+      databaseDefaults {
+        #usergroup = 1
+        #lang = de
+        #db_mountpoints = 1
+        #file_mountpoints = 1
+      }
+    }
+
+    // Frontend users
+    fe_users {
+      // Identifier of the SP entity  (must be a URI)
+      // ATTENTION: `baseurl` will be attached automatically
+      // Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&mdsamlmetadata`
+      saml.sp.entityId =
+
+      // Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login`
+      saml.sp.assertionConsumerService.url =
+
+      // Decide whether a new frontend user should be created
+      createIfNotExist = 1
+
+      // Configuration of the returning parameters of the SSO.
+      // This array will be merged with `beUser.databaseDefaults`.
+      transformationArr {
+        username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname
+        email = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
+        name = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/displayname
+        first_name = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
+        last_name = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname
+      }
+
+      // This section allows you to set defaults for a newly created frontend users
+      // You can add all fields of the database here
+      databaseDefaults {
+        #pid = 1
+        #usergroup = 1
+      }
+    }
+
     // This holds the whole SAML configuration
     // For more details on the configuration see https://github.com/onelogin/php-saml
     saml {
@@ -48,8 +103,8 @@ plugin.tx_mdsaml {
         // attributeConsumingService. nameFormat, attributeValue and
         // friendlyName can be omitted. Otherwise remove this section.
         attributeConsumingService {
-          serviceName = SP test,
-          serviceDescription = Test Service
+          serviceName = SP MdSaml,
+          serviceDescription = SAML Service of ext:md_saml
           requestedAttributes {
             10 {
               name =
@@ -331,27 +386,28 @@ plugin.tx_mdsaml {
 
     } // end saml
 
-    // Configuration of backend users
-    beUser {
-      // Decide whether a new backend user should be created
-      createIfNotExist = 1
-
-      // This section allows you to set defaults for a newly created backend users
-      // You can add all fields of the database here
-      databaseDefaults {
-        usergroup =
-        lang =
-        db_mountpoints =
-        file_mountpoints =
-      }
-    }
-
-    // Configuration of the returning parameters of the SSO.
-    // This array will be merged with `beUser.databaseDefaults`.
-    transformationArr {
-      username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname
-      email = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
-      realName = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname
-    }
   }
 }
+
+# ============================= #
+# Configuration for EXT:felogin #
+# ============================= #
+[{$plugin.tx_mdsaml.settings.fe_users.active} == 1]
+
+  plugin.tx_felogin_login {
+    view {
+      templateRootPaths.100 = EXT:md_saml/Resources/Private/Templates/
+      partialRootPaths.100 = EXT:md_saml/Resources/Private/Partials/
+      layoutRootPaths.100 = EXT:md_saml/Resources/Private/Layouts/
+    }
+
+    # Add/modify the translation
+    _LOCAL_LANG {
+      default {
+        legend = Single sign on
+        #login = Login
+      }
+    }
+  }
+
+[end]

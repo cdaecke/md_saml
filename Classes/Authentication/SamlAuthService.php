@@ -83,7 +83,11 @@ class SamlAuthService extends AbstractAuthenticationService
 
         /** @var SettingsService $settingsService */
         $settingsService = GeneralUtility::makeInstance(SettingsService::class);
-        $extSettings = $settingsService->getSettings();
+        $extSettings = $settingsService->getSettings($loginType);
+
+        if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
+            $this->db_user['check_pid_clause'] = '`pid` IN ('.$extSettings['fe_users']['databaseDefaults']['pid'].')';
+        }
 
         if (null !== GeneralUtility::_GP('acs')) {
             $auth = new Auth($extSettings['saml']);
@@ -129,7 +133,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 $record = $this->fetchUserRecord($user['username']);
                 if (is_array($record)) {
                     return $record;
-                } else if ($extSettings['beUser']['createIfNotExist'] == 1) {
+                } else if ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
                     return $this->createUser($user);
                 }
             }
@@ -150,7 +154,7 @@ class SamlAuthService extends AbstractAuthenticationService
     private function createUser(array $userData)
     {
         $saltingInstance = GeneralUtility::makeInstance(PasswordHashFactory::class)
-            ->getDefaultHashInstance('BE');
+            ->getDefaultHashInstance($this->authInfo['loginType']);
 
         if (!empty($userData['username'])) {
             $userArr = [
@@ -195,10 +199,10 @@ class SamlAuthService extends AbstractAuthenticationService
     private function getUserArrayForDb(array $samlAttributes, array $extSettings): array
     {
         $userArr = [];
-        $transformationArr = array_flip($extSettings['transformationArr']);
+        $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
         // Add default values from TypoScript settings to user array
-        foreach ($extSettings['beUser']['databaseDefaults'] as $key => $val) {
+        foreach ($extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] as $key => $val) {
             $key = trim($key);
             $val = trim($val);
 
@@ -225,8 +229,7 @@ class SamlAuthService extends AbstractAuthenticationService
     private function inCharge(): bool
     {
         if (GeneralUtility::_GP('login-provider') === "md_saml" &&
-            $this->pObj->loginType === 'BE' &&
-            isset($this->login['uname']) &&
+            ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE') &&
             isset($this->login['status']) &&
             $this->login['status'] === 'login'
         ) {

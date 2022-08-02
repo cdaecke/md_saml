@@ -12,7 +12,7 @@
 
 $EM_CONF[$_EXTKEY] = [
     'title' => 'Single Sign-on with SAML',
-    'description' => 'TYPO3 SSO Login with SAML authentication.',
+    'description' => 'SSO frontend or backend login with SAML authentication.',
     'category' => 'be',
     'author' => 'Christoph Daecke',
     'author_email' => 'typo3@mediadreams.org',

@@ -12,7 +12,7 @@ call_user_func(function () {
         [
             'title' => 'BE ADFS Authentication',
             'description' => 'Authentication with a Microsoft ADFS',
-            'subtype' => 'authUserBE, getUserBE',
+            'subtype' => 'authUserFE, getUserFE, authUserBE, getUserBE',
             'available' => true,
             'priority' => 80,
             'quality' => 80,

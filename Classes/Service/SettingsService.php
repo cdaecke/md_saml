@@ -30,10 +30,11 @@ class SettingsService
     /**
      * Return settings
      *
+     * @param string $loginType Can be 'FE' or 'BE'
      * @return array
      * @throws \TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException
      */
-    public function getSettings(): array
+    public function getSettings(string $loginType): array
     {
         // Backend mode, no TSFE loaded
         if (!isset($GLOBALS['TSFE'])) {
@@ -53,6 +54,9 @@ class SettingsService
         if (count($settings) == 0) {
             throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
         }
+
+        // Merge settings according to given context (frontend or backend)
+        $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType). '_users']['saml']);
 
         // Add base url
         $settings['saml']['sp']['entityId'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['entityId'];

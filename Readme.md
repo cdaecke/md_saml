@@ -1,18 +1,20 @@
 # TYPO3 Extension `md_saml`
-Single Sign-on extension for TYPO3. It enables you, to log into the TYPO3 backend by using an Identity Provider (IdP),
-for example a ADFS server (Active Directory Federation Services). It is fully configurable by TypoScript.
+Single Sign-on extension for TYPO3. It enables you, to log into the TYPO3 backend or the website frontend by using an
+Identity Provider (IdP), for example an ADFS server (Active Directory Federation Services). It is fully configurable by TypoScript.
 
 ## Screenshots
-TYPO3 login:
+TYPO3 and frontend login:
 
-<img src="./Documentation/Images/typo3_login.png?raw=true" alt="TYPO3 login" width="346" height="389" />
+<img src="./Documentation/Images/typo3_login.png?raw=true" alt="TYPO3 login" width="346" height="389" style="border:1px solid #999999" />
+<img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
 - TYPO3 v10.4 or v11.5
 
 ## Installation
-- Install the extension with the following composer command: `composer req mediadreams/md_saml`
+- Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
 - Include the static TypoScript of the extension
+- Configure the extension by setting your own constants
 
 ## Configuration
 ### TypoScript
@@ -27,31 +29,81 @@ own extension and modify according your needs.
 - Open certificate files and remove all line breaks. Copy value of  `sp.crt` to
 `plugin.tx_mdsaml.settings.saml.sp.x509cert` and value of `sp.key` to `plugin.tx_mdsaml.settings.saml.sp.privateKey`
 
+**Backend**
+
+- `plugin.tx_mdsaml.settings.be_users.saml.sp.entityId`<br>
+Identifier of the backend (TYPO3) SP entity  (must be a URI)<br>
+ATTENTION: `baseurl` will be attached automatically<br>
+Default: `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata`
+- `plugin.tx_mdsaml.settings.be_users.saml.sp.assertionConsumerService.url`<br>
+Specifies info about where and how the <AuthnResponse> message of a backend (TYPO3) login MUST be returned to the
+requester, in this case our SP.<br>
+Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs`
+
+**Frontend**
+
+- `plugin.tx_mdsaml.settings.fe_users.saml.sp.entityId`<br>
+Identifier of the frontend SP entity  (must be a URI)<br>
+ATTENTION: `baseurl` will be attached automatically<br>
+Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&mdsamlmetadata`
+- `plugin.tx_mdsaml.settings.fe_users.saml.sp.assertionConsumerService.url`<br>
+Specifies info about where and how the <AuthnResponse> message of a frontend login MUST be returned to the requester,
+in this case our SP.<br>
+Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login`
+
+**Note**
+
+All default settings, which are configured in `plugin.tx_mdsaml.settings.saml` can be overwritten for backend or
+frontend needs with properties in `plugin.tx_mdsaml.settings.be_users.saml...` (backend) and
+`plugin.tx_mdsaml.settings.fe_users.saml...` (frontend).
+
 As underlying SAML toolkit the library of OneLogin is used (no account with OneLogin is needed!).
 See full [documentation](https://github.com/onelogin/php-saml) for details on the configuration.
 
 #### Users
-You are able to create new users, if they are not preset at the time of login.
+You are able to create new users, if they are not present at the time of login.
 
-- `plugin.tx_mdsaml.settings.beUser.createIfNotExist`<br>
+**Backend**
+
+- `plugin.tx_mdsaml.settings.be_users.createIfNotExist`<br>
 Decide whether a new backend user should be created (Default = 1)
-- `plugin.tx_mdsaml.settings.beUser.databaseDefaults`...<br>
-This section allows you to set defaults for a newly created backend users. You can add any fields of the database here.<br>
-Example: `plugin.tx_mdsaml.settings.beUser.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
+- `plugin.tx_mdsaml.settings.be_users.databaseDefaults`...<br>
+This section allows you to set defaults for a newly created backend user. You can add any fields of the database here.<br>
+Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
+
+**Frontend**
+
+- `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`<br>
+Decide whether a new frontend user should be created (Default = 1)
+- `plugin.tx_mdsaml.settings.fe_users.databaseDefaults`...<br>
+This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
+Example: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
+ATTENTION: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.pid` will be used as storage for newsly created fe_users.
 
 #### SSO
-The returned value of the SSO provider can be anything. With the following configuration set the names of the returned values to the ones needed in TYPO3:
+The returned value of the SSO provider can be anything. With the following configuration set the names of the returned
+values to the ones needed in TYPO3:
 
-- `plugin.tx_mdsaml.settings.transformationArr`<br>
-Example: `plugin.tx_mdsaml.settings.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
+**Backend**
+
+- `plugin.tx_mdsaml.settings.be_users.transformationArr`<br>
+Example: `plugin.tx_mdsaml.be_users.settings.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
 The above example shows the returning value of an ADFS server, which contains the username for TYPO3.
+
+**Frontend**
+
+- `plugin.tx_mdsaml.settings.fe_users.transformationArr`<br>
+Example: `plugin.tx_mdsaml.settings.fe_users.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
+The above example shows the returning value of an ADFS server, which contains the username for a frontend user.
 
 ### ADFS
 The following steps are an example on how to configure an ADFS server as IdP (Identity Provider).
 
 Since I don't have the configuration in english, the following section is available in german only. I am sorry for that!
 
-- Get SP (Service Provider) meta data. Log into TYPO3 (important!) and call `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata`
+- Get SP (Service Provider) meta data. Log into TYPO3 (important!) and call `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata&loginType=backend`
+for the backend configuration and `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata&loginType=frontend` for the
+frontend configuration.
 - Neue `Vertrauensstellung der vertrauenden Seite` erstellen
 
     1. Willkommen

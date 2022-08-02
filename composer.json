@@ -1,7 +1,7 @@
 {
     "name": "mediadreams/md_saml",
     "type": "typo3-cms-extension",
-    "description": "TYPO3 SSO Login with SAML authentication.",
+    "description": "SSO frontend or backend login with SAML authentication.",
 	"license": "GPL-2.0-or-later",
 	"authors": [
 		{
