@@ -86,7 +86,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $extSettings = $settingsService->getSettings($loginType);
 
         if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
-            $this->db_user['check_pid_clause'] = '`pid` IN ('.$extSettings['fe_users']['databaseDefaults']['pid'].')';
+            $this->db_user['check_pid_clause'] = '`pid` IN (' . $extSettings['fe_users']['databaseDefaults']['pid'] . ')';
         }
 
         if (null !== GeneralUtility::_GP('acs')) {
@@ -133,7 +133,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 $record = $this->fetchUserRecord($user['username']);
                 if (is_array($record)) {
                     return $record;
-                } else if ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
+                } elseif ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
                     return $this->createUser($user);
                 }
             }

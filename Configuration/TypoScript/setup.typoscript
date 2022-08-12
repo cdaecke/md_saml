@@ -9,7 +9,7 @@ plugin.tx_mdsaml {
     // Backend users
     be_users {
       // Identifier of the SP entity  (must be a URI)
-      // ATTENTION: `baseurl` will be attached automatically
+      // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
       saml.sp.entityId = /typo3/index.php?loginProvider=1648123062&mdsamlmetadata
       saml.sp.assertionConsumerService.url = /typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs
 
@@ -33,7 +33,7 @@ plugin.tx_mdsaml {
     // Frontend users
     fe_users {
       // Identifier of the SP entity  (must be a URI)
-      // ATTENTION: `baseurl` will be attached automatically
+      // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
       // Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&mdsamlmetadata`
       saml.sp.entityId =
 
@@ -83,14 +83,14 @@ plugin.tx_mdsaml {
       // *******************************************
       sp {
         // Identifier of the SP entity  (must be a URI)
-        // ATTENTION: `baseurl` will be attached automatically
+        // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
         entityId = /typo3/index.php?loginProvider=1648123062&mdsamlmetadata
 
         // Specifies info about where and how the <AuthnResponse> message MUST be
         // returned to the requester, in this case our SP.
         assertionConsumerService {
           // URL Location where the <Response> from the IdP will be returned
-          // ATTENTION: `baseurl` will be attached automatically
+          // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
           url = /typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs
 
           // SAML protocol binding to be used when returning the <Response>
@@ -120,7 +120,7 @@ plugin.tx_mdsaml {
         // returned to the requester, in this case our SP.
         singleLogoutService {
           // URL Location where the <Response> from the IdP will be returned
-          // ATTENTION: `baseurl` will be attached automatically
+          // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
           url = /index.php?loginProvider=1648123062&sls
 
           // SAML protocol binding to be used when returning the <Response>

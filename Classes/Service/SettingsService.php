@@ -56,9 +56,10 @@ class SettingsService
         }
 
         // Merge settings according to given context (frontend or backend)
-        $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType). '_users']['saml']);
+        $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType) . '_users']['saml']);
 
         // Add base url
+        $settings['saml']['baseurl'] = $settings['mdsamlSpBaseUrl'];
         $settings['saml']['sp']['entityId'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['entityId'];
         $settings['saml']['sp']['assertionConsumerService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['assertionConsumerService']['url'];
         $settings['saml']['sp']['singleLogoutService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['singleLogoutService']['url'];

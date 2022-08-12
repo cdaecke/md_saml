@@ -3,9 +3,12 @@ Single Sign-on extension for TYPO3. It enables you, to log into the TYPO3 backen
 Identity Provider (IdP), for example an ADFS server (Active Directory Federation Services). It is fully configurable by TypoScript.
 
 ## Screenshots
-TYPO3 and frontend login:
+TYPO3 login:
 
 <img src="./Documentation/Images/typo3_login.png?raw=true" alt="TYPO3 login" width="346" height="389" style="border:1px solid #999999" />
+
+Frontend login:
+
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
@@ -62,6 +65,12 @@ See full [documentation](https://github.com/onelogin/php-saml) for details on th
 
 #### Users
 You are able to create new users, if they are not present at the time of login.
+ - Backend<br>
+ `plugin.tx_mdsaml.settings.be_users.createIfNotExist`...<br>
+ Default = 1, so be_users will be created, if they do not exist.
+ - Frontend<br>
+ `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`...<br>
+  Default = 1, so fe_users will be created, if they do not exist.
 
 **Backend**
 
