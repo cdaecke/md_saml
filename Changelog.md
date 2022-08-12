@@ -1,3 +1,14 @@
+# Version 2.0.0 (2022-08-12)
+[!!!][FEATURE] Add SAML frontend login
+
+Attention: The release comes with breaking changes:
+- Typoscript config `plugin.tx_mdsaml.settings.beUser` was renamed in `plugin.tx_mdsaml.settings.be_users`
+- Typoscript config `plugin.tx_mdsaml.settings.fe_users` was introduced
+- Typoscript constant `plugin.tx_mdsaml.settings.fe_users.active = 1` was introduced
+
+All changes
+https://github.com/cdaecke/md_saml/compare/1.0.7...2.0.0
+
 # Version 1.0.7 (2022-05-06)
 [BUGFIX] update github workflow for TER deployment: since XSD files of vendor onelogn are not accasible in the phar file, use vendor as normal folder
 
