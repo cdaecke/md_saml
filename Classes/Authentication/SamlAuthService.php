@@ -31,6 +31,14 @@ class SamlAuthService extends AbstractAuthenticationService
     const SUCCESS_CONTINUE = 10;
     const FAIL_BREAK = 0;
 
+    protected $settingsService = null;
+
+    public function __construct()
+    {
+        /** @var SettingsService $settingsService */
+        $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
+    }
+
     /**
      * Authenticate the user using the data from the ADFS
      * Decide, if the given $user is allowed to access or not
@@ -75,21 +83,19 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     public function getUser()
     {
+
         if (!$this->inCharge()) {
             return false;
         }
 
         $loginType = $this->pObj->loginType;
 
-        /** @var SettingsService $settingsService */
-        $settingsService = GeneralUtility::makeInstance(SettingsService::class);
-        $extSettings = $settingsService->getSettings($loginType);
+        $extSettings = $this->settingsService->getSettings($loginType);
 
         if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
             $this->db_user['check_pid_clause'] = '`pid` IN (' . $extSettings['fe_users']['databaseDefaults']['pid'] . ')';
         }
-
-        if (null !== GeneralUtility::_GP('acs')) {
+        if (null !== GeneralUtility::_GP('acs') || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
             $auth = new Auth($extSettings['saml']);
             $auth->processResponse();
 
@@ -129,7 +135,6 @@ class SamlAuthService extends AbstractAuthenticationService
             } else {
                 $samlAttributes = $auth->getAttributes();
                 $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
-
                 $record = $this->fetchUserRecord($user['username']);
                 if (is_array($record)) {
                     return $record;
@@ -228,6 +233,9 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     private function inCharge(): bool
     {
+        if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
+            return true;
+        }
         if (GeneralUtility::_GP('login-provider') === "md_saml" &&
             ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE') &&
             isset($this->login['status']) &&

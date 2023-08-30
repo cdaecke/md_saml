@@ -7,3 +7,9 @@ services:
   Mediadreams\MdSaml\:
     resource: '../Classes/*'
     exclude: '../Classes/Domain/Model/*'
+
+# EventListeners
+  Mediadreams\MdSaml\EventListener\SamlAfterUserLoggedOutEventListener:
+    tags:
+      - name: event.listener
+        identifier: 'md-saml/SamlAfterUserLoggedOutEventListener'

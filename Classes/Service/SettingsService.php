@@ -20,13 +20,33 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
+use TYPO3\CMS\Core\SingletonInterface;
 
 /**
  * Class SettingsService
  * @package Mediadreams\MdSaml\Service
  */
-class SettingsService
+class SettingsService implements SingletonInterface
 {
+    protected $extSettings = null;
+
+    public function isFrontendLoginActive()
+    {
+        $extSettings = $this->getSettings('fe');
+        return filter_var($extSettings['fe_users']['active'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function useFrontendAssertionConsumerServiceAuto(string $path)
+    {
+        $extSettings = $this->getSettings('fe');
+        $auto = filter_var($extSettings['fe_users']['saml']['sp']['assertionConsumerService']['auto'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($auto && $this->isFrontendLoginActive()) {
+            $assertionConsumerServiceUrl = $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['url'] ?? '/';
+            return $path == $assertionConsumerServiceUrl && $_POST['SAMLResponse'];
+        }
+        return false;
+    }
+
     /**
      * Return settings
      *
@@ -36,37 +56,36 @@ class SettingsService
      */
     public function getSettings(string $loginType): array
     {
-        // Backend mode, no TSFE loaded
-        if (!isset($GLOBALS['TSFE'])) {
-            $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
-            $settings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
-        } else {
-            /** @var ConfigurationManager $configurationManager */
-            $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
+        if ($this->extSettings === null) {
+            // Backend mode, no TSFE loaded
+            if (!isset($GLOBALS['TSFE'])) {
+                $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
+                $settings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
+            } else {
+                /** @var ConfigurationManager $configurationManager */
+                $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
+                $settings = $configurationManager->getConfiguration(
+                    ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
+                    'Mdsaml',
+                    ''
+                );
+            }
+            if (count($settings) == 0) {
+                throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
+            }
 
-            $settings = $configurationManager->getConfiguration(
-                ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
-                'Mdsaml',
-                ''
-            );
+            // Merge settings according to given context (frontend or backend)
+            $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType) . '_users']['saml']);
+
+            // Add base url
+            $settings['saml']['baseurl'] = $settings['mdsamlSpBaseUrl'];
+            $settings['saml']['sp']['entityId'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['entityId'];
+            $settings['saml']['sp']['assertionConsumerService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['assertionConsumerService']['url'];
+            $settings['saml']['sp']['singleLogoutService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['singleLogoutService']['url'];
+
+            $this->extSettings = $this->convertBooleans($settings);
         }
-
-        if (count($settings) == 0) {
-            throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
-        }
-
-        // Merge settings according to given context (frontend or backend)
-        $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType) . '_users']['saml']);
-
-        // Add base url
-        $settings['saml']['baseurl'] = $settings['mdsamlSpBaseUrl'];
-        $settings['saml']['sp']['entityId'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['entityId'];
-        $settings['saml']['sp']['assertionConsumerService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['assertionConsumerService']['url'];
-        $settings['saml']['sp']['singleLogoutService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['singleLogoutService']['url'];
-
-        $settings = $this->convertBooleans($settings);
-
-        return $settings;
+        return $this->extSettings;
     }
 
     /**

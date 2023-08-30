@@ -32,6 +32,7 @@ plugin.tx_mdsaml {
 
     // Frontend users
     fe_users {
+      active = {$plugin.tx_mdsaml.settings.fe_users.active}
       // Identifier of the SP entity  (must be a URI)
       // ATTENTION: `mdsamlSpBaseUrl` will be attached automatically
       // Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&mdsamlmetadata`
@@ -39,6 +40,9 @@ plugin.tx_mdsaml {
 
       // Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login`
       saml.sp.assertionConsumerService.url =
+
+      // if enable login is detected from url above, "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" not needed)
+      saml.sp.assertionConsumerService.auto = 0
 
       // Decide whether a new frontend user should be created
       createIfNotExist = 1
