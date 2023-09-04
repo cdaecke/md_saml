@@ -64,9 +64,14 @@ class AcsSamlMiddleware implements MiddlewareInterface
                     'loginProvider' => 1648123062,
                     'login-provider' => 'md_saml',
                 ];
-                $queryParams = array_replace_recursive($loginParams, $request->getQueryParams());
-                $request = $request->withQueryParams($queryParams);
+            if (isset($_POST['RelayState'])) {
+                $loginParams['redirect_url'] = $_POST['RelayState'];
+            }
+            $queryParams = array_replace_recursive($loginParams, $request->getQueryParams());
+            $request = $request->withQueryParams($queryParams);
         }
         return $handler->handle($request);
     }
+
+
 }
