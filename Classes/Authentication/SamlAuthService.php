@@ -215,7 +215,9 @@ class SamlAuthService extends AbstractAuthenticationService
                 $userArr[$key] = $val;
             }
         }
-
+        if ($this->authInfo['db_user']['table'] == 'fe_users') {
+            $userArr['md_saml_source'] = 1;
+        }
         // Add values from SSO provider
         foreach ($samlAttributes as $attributeName => $attributeValues) {
             if (isset($transformationArr[$attributeName])) {

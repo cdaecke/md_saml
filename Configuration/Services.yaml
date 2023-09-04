@@ -9,6 +9,12 @@ services:
     exclude: '../Classes/Domain/Model/*'
 
 # EventListeners
+
+  Mediadreams\MdSaml\EventListener\SamlBeforeUserLogoutEventListener:
+    tags:
+      - name: event.listener
+        identifier: 'md-saml/SamlBeforeUserLogoutEventListener'
+
   Mediadreams\MdSaml\EventListener\SamlAfterUserLoggedOutEventListener:
     tags:
       - name: event.listener

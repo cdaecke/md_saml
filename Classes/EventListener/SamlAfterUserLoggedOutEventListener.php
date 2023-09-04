@@ -15,7 +15,8 @@ final class SamlAfterUserLoggedOutEventListener {
   {
       // SSO Logout
       $settingsService = GeneralUtility::makeInstance(SettingsService::class);
-      if ($settingsService->isFrontendLoginActive()) {
+      if ($settingsService->getInCharge()) {
+          //      if ($settingsService->isFrontendLoginActive()) {
           $extSettings = $settingsService->getSettings('fe');
           $auth = new Auth($extSettings['saml']);
           $auth->logout();

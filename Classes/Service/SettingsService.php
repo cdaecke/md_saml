@@ -28,7 +28,18 @@ use TYPO3\CMS\Core\SingletonInterface;
  */
 class SettingsService implements SingletonInterface
 {
+    protected $inCharge = false;
     protected $extSettings = null;
+
+    public function setInCharge(bool $inCharge): void
+    {
+        $this->inCharge = $inCharge;
+    }
+
+    public function getInCharge(): bool
+    {
+        return $this->inCharge;
+    }
 
     public function isFrontendLoginActive()
     {
