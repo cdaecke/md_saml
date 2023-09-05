@@ -12,7 +12,7 @@ Frontend login:
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
-- TYPO3 v10.4 or v11.5
+- TYPO3 v11.5 or v12.4
 
 ## Installation
 - Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
@@ -72,10 +72,20 @@ You are able to create new users, if they are not present at the time of login.
  `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`...<br>
   Default = 1, so fe_users will be created, if they do not exist.
 
+You are able to update existing users, if they are already present at the time of login.
+ - Backend<br>
+ `plugin.tx_mdsaml.settings.be_users.updateIfExist`...<br>
+ Default = 1, so be_users will be updated, if they exist.
+ - Frontend<br>
+ `plugin.tx_mdsaml.settings.fe_users.updateIfExist`...<br>
+  Default = 1, so fe_users will be updated, if they exist.
+
 **Backend**
 
 - `plugin.tx_mdsaml.settings.be_users.createIfNotExist`<br>
 Decide whether a new backend user should be created (Default = 1)
+- `plugin.tx_mdsaml.settings.be_users.updateIfExist`<br>
+Decide whether a backend user should be updated (Default = 1)
 - `plugin.tx_mdsaml.settings.be_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created backend user. You can add any fields of the database here.<br>
 Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
@@ -84,6 +94,8 @@ Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` w
 
 - `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`<br>
 Decide whether a new frontend user should be created (Default = 1)
+- `plugin.tx_mdsaml.settings.fe_users.updateIfExist`<br>
+Decide whether a new frontend user should be updated (Default = 1)
 - `plugin.tx_mdsaml.settings.fe_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
 Example: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>

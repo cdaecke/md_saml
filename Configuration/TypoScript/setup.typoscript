@@ -16,6 +16,10 @@ plugin.tx_mdsaml {
       // Decide whether a new backend user should be created
       createIfNotExist = 1
 
+      // Decide whether to update a existing backend user with new data
+      updateIfExist = 1
+
+
       transformationArr {
         username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname
         email = http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress
@@ -46,6 +50,9 @@ plugin.tx_mdsaml {
 
       // Decide whether a new frontend user should be created
       createIfNotExist = 1
+
+      // Decide whether to update a existing frontend user with new data
+      updateIfExist = 1
 
       // Configuration of the returning parameters of the SSO.
       // This array will be merged with `beUser.databaseDefaults`.

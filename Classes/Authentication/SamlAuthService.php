@@ -14,11 +14,14 @@ namespace Mediadreams\MdSaml\Authentication;
  *
  */
 
+use Mediadreams\MdSaml\Event\ChangeUserEvent;
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Utils;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
@@ -32,11 +35,13 @@ class SamlAuthService extends AbstractAuthenticationService
     const FAIL_BREAK = 0;
 
     protected $settingsService = null;
+    private EventDispatcherInterface $eventDispatcher;
 
     public function __construct()
     {
         /** @var SettingsService $settingsService */
         $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
+        $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
     }
 
     /**
@@ -137,7 +142,11 @@ class SamlAuthService extends AbstractAuthenticationService
                 $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
                 $record = $this->fetchUserRecord($user['username']);
                 if (is_array($record)) {
-                    return $record;
+                    if ($extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] == 1) {
+                        return $this->updateUser($record, $user);
+                    } else {
+                        return $record;
+                    }
                 } elseif ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
                     return $this->createUser($user);
                 }
@@ -175,6 +184,9 @@ class SamlAuthService extends AbstractAuthenticationService
             foreach ($userData as $key => $value) {
                 $userArr[$key] = $value;
             }
+            $userData = $this->eventDispatcher->dispatch(
+                new ChangeUserEvent($userArr)
+            )->getUserData();
 
             /** @var QueryBuilder $queryBuilder */
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
@@ -186,12 +198,59 @@ class SamlAuthService extends AbstractAuthenticationService
 
             $queryBuilder->insert($this->authInfo['db_user']['table'])
                 ->values($userArr)
-                ->execute();
+                ->executeStatement();
 
             return $this->fetchUserRecord($userData['username']);
         }
 
         return false;
+    }
+    /**
+     * Update a existing frontend/backend user with given data
+     *
+     * @param array $localUser
+     * @param array $userData
+     * @return array|false
+     */
+    private function updateUser(array $localUser, array $userData)
+    {
+        $changed = false;
+        $uid = $localUser['uid'] ?? 0;
+
+        $userData = $this->eventDispatcher->dispatch(
+            new ChangeUserEvent($userData)
+        )->getUserData();
+
+        foreach ($userData as $key => $value) {
+            if ($localUser[$key] != $value) {
+                $changed = true;
+                break;
+            }
+        }
+        if (!$changed || $uid == 0 || empty($userData['username'])) {
+            return $localUser;
+        }
+
+        /** @var QueryBuilder $queryBuilder */
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                      ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
+
+        $queryBuilder->getRestrictions()
+                     ->removeAll()
+                     ->add(new DeletedRestriction());
+
+        $queryBuilder->update($this->authInfo['db_user']['table']);
+        foreach ($userData as $key => $value) {
+            $queryBuilder->set($key, $value);
+        }
+        $queryBuilder
+            ->set('tstamp', time())
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT))
+            )
+            ->executeStatement();
+
+        return $this->fetchUserRecord($userData['username']);
     }
 
     /**

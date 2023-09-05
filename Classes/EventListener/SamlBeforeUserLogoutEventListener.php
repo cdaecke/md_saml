@@ -20,7 +20,7 @@ final class SamlBeforeUserLogoutEventListener {
             }
             // Fetch the user from the DB
             $userRecord = $frontendUserAuthentication->getRawUserByUid($frontendUserAuthentication->userSession->getUserId() ?? 0);
-            if ($userRecord['md_saml_source'] == 1) {
+            if ($userRecord['md_saml_source'] ?? false) {
                 // we are responsible
                 $settingsService = GeneralUtility::makeInstance(SettingsService::class);
                 $settingsService->setInCharge(true);
