@@ -42,6 +42,9 @@ Default: `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata`
 Specifies info about where and how the <AuthnResponse> message of a backend (TYPO3) login MUST be returned to the
 requester, in this case our SP.<br>
 Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs`
+- `saml.sp.assertionConsumerService.auto`<br>
+If enabled, login is detected from url above (assertionConsumerService.url), the arguments "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" re not needed.
+If there is a login plugin on assertionConsumerService.url page and redirect method ''getpost'' is selected, redirection is done with given RelayState (should be the referrer)
 
 **Frontend**
 
@@ -95,7 +98,7 @@ Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` w
 - `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`<br>
 Decide whether a new frontend user should be created (Default = 1)
 - `plugin.tx_mdsaml.settings.fe_users.updateIfExist`<br>
-Decide whether a new frontend user should be updated (Default = 1)
+Decide whether a frontend user should be updated (Default = 1)
 - `plugin.tx_mdsaml.settings.fe_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
 Example: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
@@ -177,6 +180,8 @@ Als letztes muss noch im Reiter `Bezeichner` der `Vertrauensstellung` im Feld `B
 Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
 
 ### TYPO3
+
+#### General
 <ul>
     <li>
         In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
@@ -187,6 +192,47 @@ Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
         For example set `https://www.domain.tld/` instead of just using `/`.
     </li>
 </ul>
+
+#### Site Config
+```yaml
+errorHandling:
+    errorCode: 403
+    errorHandler: PHP
+    errorPhpClassFQCN: Mediadreams\MdSaml\Error\ForbiddenHandling
+```
+#### Change User Event
+
+event to customize user data before insert/update on login
+
+```php
+namespace XXX\XXX\EventListener;
+
+use Mediadreams\MdSaml\Event\ChangeUserEvent;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
+final class AddGroupChangeUserEventListener {
+
+  protected int $adminGroupUid = 3;
+
+  // SSO User Changes
+  public function __invoke(ChangeUserEvent $event): void
+  {
+      // get current data
+      $userData = $event->getUserData();
+      $email = $userData['email'] ?? null;
+      // some conditions, if true add group
+      if (1) {
+          $usergroups = GeneralUtility::intExplode(',', $userData['usergroup']);
+          $usergroups[] = $this->adminGroupUid;
+	  // change some data
+          $userData['usergroup'] = implode(',', $usergroups);
+	  // save new data
+          $event->setUserData($userData);
+      }
+  }
+}
+```
+You must register the event listener in `Services.yaml`
 
 ## FAQ
 <dl>
