@@ -184,7 +184,7 @@ class SamlAuthService extends AbstractAuthenticationService
             foreach ($userData as $key => $value) {
                 $userArr[$key] = $value;
             }
-            $userData = $this->eventDispatcher->dispatch(
+            $userArr = $this->eventDispatcher->dispatch(
                 new ChangeUserEvent($userArr)
             )->getUserData();
 
