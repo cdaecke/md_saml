@@ -151,7 +151,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param array $userData
      * @return array|false
      */
-    private function createUser(array $userData)
+    protected function createUser(array $userData)
     {
         $saltingInstance = GeneralUtility::makeInstance(PasswordHashFactory::class)
             ->getDefaultHashInstance($this->authInfo['loginType']);
@@ -196,7 +196,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param array $extSettings
      * @return array
      */
-    private function getUserArrayForDb(array $samlAttributes, array $extSettings): array
+    protected function getUserArrayForDb(array $samlAttributes, array $extSettings): array
     {
         $userArr = [];
         $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
@@ -226,7 +226,7 @@ class SamlAuthService extends AbstractAuthenticationService
      *
      * @return bool
      */
-    private function inCharge(): bool
+    protected function inCharge(): bool
     {
         if (GeneralUtility::_GP('login-provider') === "md_saml" &&
             ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE') &&
