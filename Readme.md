@@ -12,7 +12,7 @@ Frontend login:
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
-- TYPO3 v10.4 or v11.5
+- TYPO3 v11.5 or v12.4
 
 ## Installation
 - Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
@@ -42,6 +42,9 @@ Default: `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata`
 Specifies info about where and how the <AuthnResponse> message of a backend (TYPO3) login MUST be returned to the
 requester, in this case our SP.<br>
 Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs`
+- `saml.sp.assertionConsumerService.auto`<br>
+If enabled, login is detected from url above (assertionConsumerService.url), the arguments "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" re not needed.
+If there is a login plugin on assertionConsumerService.url page and redirect method ''getpost'' is selected, redirection is done with given RelayState (should be the referrer)
 
 **Frontend**
 
@@ -72,10 +75,20 @@ You are able to create new users, if they are not present at the time of login.
  `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`...<br>
   Default = 1, so fe_users will be created, if they do not exist.
 
+You are able to update existing users, if they are already present at the time of login.
+ - Backend<br>
+ `plugin.tx_mdsaml.settings.be_users.updateIfExist`...<br>
+ Default = 1, so be_users will be updated, if they exist.
+ - Frontend<br>
+ `plugin.tx_mdsaml.settings.fe_users.updateIfExist`...<br>
+  Default = 1, so fe_users will be updated, if they exist.
+
 **Backend**
 
 - `plugin.tx_mdsaml.settings.be_users.createIfNotExist`<br>
 Decide whether a new backend user should be created (Default = 1)
+- `plugin.tx_mdsaml.settings.be_users.updateIfExist`<br>
+Decide whether a backend user should be updated (Default = 1)
 - `plugin.tx_mdsaml.settings.be_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created backend user. You can add any fields of the database here.<br>
 Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
@@ -84,6 +97,8 @@ Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` w
 
 - `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`<br>
 Decide whether a new frontend user should be created (Default = 1)
+- `plugin.tx_mdsaml.settings.fe_users.updateIfExist`<br>
+Decide whether a frontend user should be updated (Default = 1)
 - `plugin.tx_mdsaml.settings.fe_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
 Example: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
@@ -165,6 +180,8 @@ Als letztes muss noch im Reiter `Bezeichner` der `Vertrauensstellung` im Feld `B
 Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
 
 ### TYPO3
+
+#### General
 <ul>
     <li>
         In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
@@ -175,6 +192,47 @@ Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
         For example set `https://www.domain.tld/` instead of just using `/`.
     </li>
 </ul>
+
+#### Site Config
+```yaml
+errorHandling:
+    errorCode: 403
+    errorHandler: PHP
+    errorPhpClassFQCN: Mediadreams\MdSaml\Error\ForbiddenHandling
+```
+#### Change User Event
+
+event to customize user data before insert/update on login
+
+```php
+namespace XXX\XXX\EventListener;
+
+use Mediadreams\MdSaml\Event\ChangeUserEvent;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+
+final class AddGroupChangeUserEventListener {
+
+  protected int $adminGroupUid = 3;
+
+  // SSO User Changes
+  public function __invoke(ChangeUserEvent $event): void
+  {
+      // get current data
+      $userData = $event->getUserData();
+      $email = $userData['email'] ?? null;
+      // some conditions, if true add group
+      if (1) {
+          $usergroups = GeneralUtility::intExplode(',', $userData['usergroup']);
+          $usergroups[] = $this->adminGroupUid;
+	  // change some data
+          $userData['usergroup'] = implode(',', $usergroups);
+	  // save new data
+          $event->setUserData($userData);
+      }
+  }
+}
+```
+You must register the event listener in `Services.yaml`
 
 ## FAQ
 <dl>
