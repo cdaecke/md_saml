@@ -1,3 +1,10 @@
+# Version 3.0.0 (2023-12-08)
+- Add support for TYPO2 v12 (Thanks to https://github.com/abplana)
+- Add simple logout service (Thanks to https://github.com/abplana)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/2.0.0...3.0.0
+
 # Version 2.0.0 (2022-08-12)
 [!!!][FEATURE] Add SAML frontend login
 
