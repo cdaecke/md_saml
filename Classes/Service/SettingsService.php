@@ -71,31 +71,32 @@ class SettingsService implements SingletonInterface
             // Backend mode, no TSFE loaded
             if (!isset($GLOBALS['TSFE'])) {
                 $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
-                $settings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
+                $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
             } else {
                 /** @var ConfigurationManager $configurationManager */
                 $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
-                $settings = $configurationManager->getConfiguration(
+                $this->extSettings = $configurationManager->getConfiguration(
                     ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
                     'Mdsaml',
                     ''
                 );
             }
-            if (count($settings) == 0) {
+            if (count($this->extSettings) == 0) {
                 throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
             }
-
-            // Merge settings according to given context (frontend or backend)
-            $settings['saml'] = array_replace_recursive($settings['saml'], $settings[mb_strtolower($loginType) . '_users']['saml']);
-
-            // Add base url
-            $settings['saml']['baseurl'] = $settings['mdsamlSpBaseUrl'];
-            $settings['saml']['sp']['entityId'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['entityId'];
-            $settings['saml']['sp']['assertionConsumerService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['assertionConsumerService']['url'];
-            $settings['saml']['sp']['singleLogoutService']['url'] = $settings['saml']['baseurl'] . $settings['saml']['sp']['singleLogoutService']['url'];
-
-            $this->extSettings = $this->convertBooleans($settings);
         }
+
+        // Merge settings according to given context (frontend or backend)
+        $this->extSettings['saml'] = array_replace_recursive($this->extSettings['saml'], $this->extSettings[mb_strtolower($loginType) . '_users']['saml']);
+
+        // Add base url
+        $this->extSettings['saml']['baseurl'] = $this->extSettings['mdsamlSpBaseUrl'];
+        $this->extSettings['saml']['sp']['entityId'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['entityId'];
+        $this->extSettings['saml']['sp']['assertionConsumerService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['assertionConsumerService']['url'];
+        $this->extSettings['saml']['sp']['singleLogoutService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['singleLogoutService']['url'];
+
+        $this->extSettings = $this->convertBooleans($this->extSettings);
+
         return $this->extSettings;
     }
 
