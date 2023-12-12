@@ -1,3 +1,9 @@
+# Version 3.0.1 (2023-12-12)
+- [BUGFIX] set ext settings correctly
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.0...3.0.1
+
 # Version 3.0.0 (2023-12-08)
 - Add support for TYPO2 v12 (Thanks to https://github.com/abplana)
 - Add simple logout service (Thanks to https://github.com/abplana)
