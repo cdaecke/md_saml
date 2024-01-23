@@ -19,3 +19,9 @@ services:
     tags:
       - name: event.listener
         identifier: 'md-saml/SamlAfterUserLoggedOutEventListener'
+
+  Mediadreams\MdSaml\Authentication\EventListener\ProcessRequestTokenListener:
+    tags:
+      - name: event.listener
+        identifier: 'md-saml/process-request-token-listener'
+        event: TYPO3\CMS\Core\Authentication\Event\BeforeRequestTokenProcessedEvent
