@@ -117,7 +117,7 @@
 		],
 		"fix:php:cs": "php-cs-fixer fix --config .php-cs-fixer.php",
 		"fix:php:rector": "./.Build/bin/rector process --config ./rector.php",
-		"fix:php:sniff": "phpcbf Classes Configuration Tests",
+		"fix:php:sniff": "phpcbf Classes Configuration",
 		"phpstan:baseline": ".Build/bin/phpstan --generate-baseline --allow-empty-baseline",
 		"prepare-release": [
 			"rm -rf .Build",
