@@ -187,7 +187,10 @@ class SamlAuthService extends AbstractAuthenticationService
             $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
             $record = $this->fetchUserRecord($user['username']);
             if (is_array($record)) {
-                if ((int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1) {
+                if (
+                    isset($extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
+                    (int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1
+                ) {
                     return $this->updateUser($record, $user);
                 }
 
