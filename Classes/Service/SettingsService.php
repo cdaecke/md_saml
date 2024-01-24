@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Mediadreams\MdSaml\Service;
 
 use TYPO3\CMS\Core\SingletonInterface;
+use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -26,33 +27,29 @@ use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
  */
 class SettingsService implements SingletonInterface
 {
-    protected $inCharge = false;
-    protected $extSettings;
+    protected bool $inCharge = false;
 
-    public function setInCharge(bool $inCharge): void
-    {
-        $this->inCharge = $inCharge;
-    }
+    protected array $extSettings = [];
 
     public function getInCharge(): bool
     {
         return $this->inCharge;
     }
 
-    public function isFrontendLoginActive()
+    public function setInCharge(bool $inCharge): void
     {
-        $extSettings = $this->getSettings('fe');
-        return filter_var($extSettings['fe_users']['active'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $this->inCharge = $inCharge;
     }
 
-    public function useFrontendAssertionConsumerServiceAuto(string $path)
+    public function useFrontendAssertionConsumerServiceAuto(string $path): bool
     {
         $extSettings = $this->getSettings('fe');
         $auto = filter_var($extSettings['fe_users']['saml']['sp']['assertionConsumerService']['auto'] ?? false, FILTER_VALIDATE_BOOLEAN);
         if ($auto && $this->isFrontendLoginActive()) {
             $assertionConsumerServiceUrl = $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['url'] ?? '/';
-            return $path == $assertionConsumerServiceUrl && $_POST['SAMLResponse'];
+            return $path === $assertionConsumerServiceUrl && $_POST['SAMLResponse'];
         }
+
         return false;
     }
 
@@ -65,7 +62,7 @@ class SettingsService implements SingletonInterface
      */
     public function getSettings(string $loginType): array
     {
-        if ($this->extSettings === null) {
+        if ($this->extSettings === []) {
             // Backend mode, no TSFE loaded
             if (!isset($GLOBALS['TSFE'])) {
                 $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
@@ -79,7 +76,8 @@ class SettingsService implements SingletonInterface
                     ''
                 );
             }
-            if (count($this->extSettings) == 0) {
+
+            if ((is_countable($this->extSettings) ? count($this->extSettings) : 0) === 0) {
                 throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
             }
         }
@@ -99,27 +97,25 @@ class SettingsService implements SingletonInterface
     }
 
     /**
-     * Convert booleans to real booleans
+     * Get TypoScript setup
      *
-     * @param array $settings
+     * @param int $pageId
      * @return array
      */
-    private function convertBooleans(array $settings): array
+    private function getTypoScriptSetup(int $pageId): array
     {
-        array_walk_recursive(
-            $settings,
-            function (&$value) {
-                if ($value === 'true') {
-                    $value = true;
-                } else {
-                    if ($value === 'false') {
-                        $value = false;
-                    }
-                }
-            }
-        );
+        $template = GeneralUtility::makeInstance(TemplateService::class);
+        $template->tt_track = false;
+        $rootline = GeneralUtility::makeInstance(
+            RootlineUtility::class,
+            $pageId
+        )->get();
+        $template->runThroughTemplates($rootline, 0);
+        $template->generateConfig();
 
-        return $settings;
+        $typoScriptSetup = $template->setup;
+
+        return GeneralUtility::removeDotsFromTS($typoScriptSetup);
     }
 
     /**
@@ -132,12 +128,9 @@ class SettingsService implements SingletonInterface
     {
         $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY');
 
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
-        $allsites = $siteFinder->getAllSites();
-
-        /** @var \TYPO3\CMS\Core\Site\Entity\Site $site */
-        foreach ($allsites as $site) {
-            if ($site->getBase()->getHost() == $siteUrl) {
+        /** @var Site $site */
+        foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
+            if ($site->getBase()->getHost() === $siteUrl) {
                 return $site->getRootPageId();
             }
         }
@@ -146,25 +139,30 @@ class SettingsService implements SingletonInterface
     }
 
     /**
-     * Get TypoScript setup
+     * Convert booleans to real booleans
      *
-     * @param int $pageId
+     * @param array $settings
      * @return array
      */
-    private function getTypoScriptSetup(int $pageId)
+    private function convertBooleans(array $settings): array
     {
-        $template = GeneralUtility::makeInstance(TemplateService::class);
-        $template->tt_track = false;
-        $rootline = GeneralUtility::makeInstance(
-            RootlineUtility::class,
-            $pageId
-        )->get();
-        $template->runThroughTemplates($rootline, 0);
-        $template->generateConfig();
-        $typoScriptSetup = $template->setup;
+        array_walk_recursive(
+            $settings,
+            static function (&$value): void {
+                if ($value === 'true') {
+                    $value = true;
+                } elseif ($value === 'false') {
+                    $value = false;
+                }
+            }
+        );
 
-        $typoScriptSetup = GeneralUtility::removeDotsFromTS($typoScriptSetup);
+        return $settings;
+    }
 
-        return $typoScriptSetup;
+    public function isFrontendLoginActive(): bool
+    {
+        $extSettings = $this->getSettings('fe');
+        return filter_var($extSettings['fe_users']['active'] ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 }

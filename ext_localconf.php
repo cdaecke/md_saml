@@ -1,5 +1,5 @@
 <?php
-defined('TYPO3') or die();
+defined('TYPO3') || die();
 
 /**
  * Register the auth service
@@ -17,7 +17,7 @@ defined('TYPO3') or die();
         'quality' => 80,
         'os' => '',
         'exec' => '',
-        'className' => \Mediadreams\MdSaml\Authentication\SamlAuthService::class
+        'className' => \Mediadreams\MdSaml\Authentication\SamlAuthService::class,
     ]
 );
 
@@ -25,5 +25,5 @@ $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['backend']['loginProviders'][1648123062] 
     'provider' => \Mediadreams\MdSaml\LoginProvider\SamlLoginProvider::class,
     'sorting' => 50,
     'iconIdentifier' => 'actions-key',
-    'label' => 'LLL:EXT:md_saml/Resources/Private/Language/locallang.xlf:login.md_saml'
+    'label' => 'LLL:EXT:md_saml/Resources/Private/Language/locallang.xlf:login.md_saml',
 ];

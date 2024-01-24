@@ -1,9 +1,12 @@
 <?php
 
+use Mediadreams\MdSaml\Middleware\AcsSamlMiddleware;
+use Mediadreams\MdSaml\Middleware\SamlMiddleware;
+
 return [
     'frontend' => [
         'mdsaml/saml-data' => [
-            'target' => \Mediadreams\MdSaml\Middleware\AcsSamlMiddleware::class,
+            'target' => AcsSamlMiddleware::class,
             'before' => [
                 'typo3/cms-frontend/authentication',
             ],
@@ -11,7 +14,7 @@ return [
     ],
     'backend' => [
         'mdsaml/saml-data' => [
-            'target' => \Mediadreams\MdSaml\Middleware\SamlMiddleware::class,
+            'target' => SamlMiddleware::class,
             'after' => [
                 'typo3/cms-backend/authentication',
             ],

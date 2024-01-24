@@ -17,6 +17,7 @@ final class SamlBeforeUserLogoutEventListener
             if ($frontendUserAuthentication->userSession->isAnonymous()) {
                 return;
             }
+
             // Fetch the user from the DB
             $userRecord = $frontendUserAuthentication->getRawUserByUid(
                 $frontendUserAuthentication->userSession->getUserId() ?? 0

@@ -16,24 +16,44 @@ namespace Mediadreams\MdSaml\Authentication;
 use Mediadreams\MdSaml\Event\ChangeUserEvent;
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Auth;
+use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
+use OneLogin\Saml2\ValidationError;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
+use TYPO3\CMS\Core\Crypto\PasswordHashing\InvalidPasswordHashException;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\HttpUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
 {
+    /**
+     * @var int
+     */
     public const SUCCESS_BREAK = 200;
+
+    /**
+     * @var int
+     */
     public const FAIL_CONTINUE = 100;
+
+    /**
+     * @var int
+     */
     public const SUCCESS_CONTINUE = 10;
+
+    /**
+     * @var int
+     */
     public const FAIL_BREAK = 0;
 
-    protected $settingsService;
+    protected SettingsService $settingsService;
+
     private EventDispatcherInterface $eventDispatcher;
 
     public function __construct()
@@ -59,7 +79,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $loginType = $this->pObj->loginType;
 
         if (empty($user['username'])) {
-            $errorMessage = $loginType . ' Login-attempt from %s (%s), username \'%s\','
+            $errorMessage = $loginType . " Login-attempt from %s (%s), username '%s',"
                 . ' SSO authentication failed (ext:md_saml)!';
             $this->writelog(
                 255,
@@ -76,14 +96,35 @@ class SamlAuthService extends AbstractAuthenticationService
 
             return self::FAIL_BREAK;
         }
+
         return self::SUCCESS_BREAK;
+    }
+
+    /**
+     * Check, whether this AuthService should be used
+     *
+     * @return bool
+     */
+    protected function inCharge(): bool
+    {
+        if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
+            return true;
+        }
+
+        return GeneralUtility::_GP('login-provider') === 'md_saml'
+            && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
+            && isset($this->login['status'])
+            && $this->login['status'] === 'login';
     }
 
     /**
      * Get user data
      * Is called to get additional information after login.
      *
-     * @return bool|mixed
+     * @return array|false|void
+     * @throws Error
+     * @throws InvalidPasswordHashException
+     * @throws ValidationError
      */
     public function getUser()
     {
@@ -95,10 +136,11 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $extSettings = $this->settingsService->getSettings($loginType);
 
-        if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
+        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
             $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
             $this->db_user['check_pid_clause'] = '`pid` IN (' . $pid . ')';
         }
+
         if (
             GeneralUtility::_GP('acs') !== null
             || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
@@ -108,7 +150,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
             $errors = $auth->getErrors();
 
-            if (!empty($errors)) {
+            if ($errors !== []) {
                 $errorMessage = $loginType . ' Login-attempt from %s (%s) failed (ext:md_saml). SAML error: %s';
                 $this->writelog(
                     255,
@@ -126,28 +168,33 @@ class SamlAuthService extends AbstractAuthenticationService
                 if ($auth->getSettings()->isDebugActive()) {
                     echo '<h1>SAML error</h1>';
                     echo '<p>' . implode(', ', $errors) . '</p>';
-                    echo '<p>' . htmlentities($auth->getLastErrorReason()) . '</p>';
+                    echo '<p>' . htmlentities($auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
                     exit;
                 }
-                if (isset($_POST['RelayState']) && Utils::getSelfURL() != $_POST['RelayState']) {
+
+                if (isset($_POST['RelayState']) && Utils::getSelfURL() !== $_POST['RelayState']) {
                     // To avoid 'Open Redirect' attacks, before execute the
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
                     $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . TYPO3_mainDir . '?loginProvider=1648123062&error=1';
-                    \TYPO3\CMS\Core\Utility\HttpUtility::redirect($url);
+                    HttpUtility::redirect($url);
                 }
 
                 return false;
             }
+
             $samlAttributes = $auth->getAttributes();
             $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
             $record = $this->fetchUserRecord($user['username']);
             if (is_array($record)) {
-                if ($extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] == 1) {
+                if ((int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1) {
                     return $this->updateUser($record, $user);
                 }
+
                 return $record;
-            } elseif ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
+            }
+
+            if ((int)$extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === 1) {
                 return $this->createUser($user);
             }
         } else {
@@ -156,101 +203,6 @@ class SamlAuthService extends AbstractAuthenticationService
         }
 
         return false;
-    }
-
-    /**
-     * Create a new backend user with given data
-     *
-     * @param array $userData
-     * @return array|false
-     */
-    protected function createUser(array $userData)
-    {
-        $saltingInstance = GeneralUtility::makeInstance(PasswordHashFactory::class)
-            ->getDefaultHashInstance($this->authInfo['loginType']);
-
-        if (!empty($userData['username'])) {
-            $userArr = [
-                'password' => $saltingInstance->getHashedPassword(md5(uniqid())),
-                'crdate' => time(),
-                'tstamp' => time(),
-                'disable' => 0,
-                'starttime' => 0,
-                'endtime' => 0,
-            ];
-
-            // This will add all information, which was received from SSO
-            foreach ($userData as $key => $value) {
-                $userArr[$key] = $value;
-            }
-            $userArr = $this->eventDispatcher->dispatch(
-                new ChangeUserEvent($userArr)
-            )->getUserData();
-
-            /** @var QueryBuilder $queryBuilder */
-            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
-                ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
-
-            $queryBuilder->getRestrictions()
-                ->removeAll()
-                ->add(new DeletedRestriction());
-
-            $queryBuilder->insert($this->authInfo['db_user']['table'])
-                ->values($userArr)
-                ->executeStatement();
-
-            return $this->fetchUserRecord($userData['username']);
-        }
-
-        return false;
-    }
-
-    /**
-     * Update a existing frontend/backend user with given data
-     *
-     * @param array $localUser
-     * @param array $userData
-     * @return array|false
-     */
-    private function updateUser(array $localUser, array $userData)
-    {
-        $changed = false;
-        $uid = $localUser['uid'] ?? 0;
-
-        $userData = $this->eventDispatcher->dispatch(
-            new ChangeUserEvent($userData)
-        )->getUserData();
-
-        foreach ($userData as $key => $value) {
-            if ($localUser[$key] != $value) {
-                $changed = true;
-                break;
-            }
-        }
-        if (!$changed || $uid == 0 || empty($userData['username'])) {
-            return $localUser;
-        }
-
-        /** @var QueryBuilder $queryBuilder */
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
-            ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
-
-        $queryBuilder->getRestrictions()
-            ->removeAll()
-            ->add(new DeletedRestriction());
-
-        $queryBuilder->update($this->authInfo['db_user']['table']);
-        foreach ($userData as $key => $value) {
-            $queryBuilder->set($key, $value);
-        }
-        $queryBuilder
-            ->set('tstamp', time())
-            ->where(
-                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT))
-            )
-            ->executeStatement();
-
-        return $this->fetchUserRecord($userData['username']);
     }
 
     /**
@@ -270,13 +222,15 @@ class SamlAuthService extends AbstractAuthenticationService
             $key = trim($key);
             $val = trim($val);
 
-            if (!empty($val)) {
+            if ($val !== '') {
                 $userArr[$key] = $val;
             }
         }
-        if ($this->authInfo['db_user']['table'] == 'fe_users') {
+
+        if ($this->authInfo['db_user']['table'] === 'fe_users') {
             $userArr['md_saml_source'] = 1;
         }
+
         // Add values from SSO provider
         foreach ($samlAttributes as $attributeName => $attributeValues) {
             if (isset($transformationArr[$attributeName])) {
@@ -288,22 +242,99 @@ class SamlAuthService extends AbstractAuthenticationService
     }
 
     /**
-     * Check, whether this AuthService should be used
+     * Update a existing frontend/backend user with given data
      *
-     * @return bool
+     * @param array $localUser
+     * @param array $userData
+     * @return array|false
      */
-    protected function inCharge(): bool
+    private function updateUser(array $localUser, array $userData)
     {
-        if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
-            return true;
+        $changed = false;
+        $uid = $localUser['uid'] ?? 0;
+
+        $userData = $this->eventDispatcher->dispatch(
+            new ChangeUserEvent($userData)
+        )->getUserData();
+
+        foreach ($userData as $key => $value) {
+            if ($localUser[$key] !== $value) {
+                $changed = true;
+                break;
+            }
         }
-        if (
-            GeneralUtility::_GP('login-provider') === 'md_saml'
-            && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
-            && isset($this->login['status'])
-            && $this->login['status'] === 'login'
-        ) {
-            return true;
+
+        if (!$changed || $uid === 0 || empty($userData['username'])) {
+            return $localUser;
+        }
+
+        /** @var QueryBuilder $queryBuilder */
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
+
+        $queryBuilder->getRestrictions()
+            ->removeAll()
+            ->add(new DeletedRestriction());
+
+        $queryBuilder->update($this->authInfo['db_user']['table']);
+        foreach ($userData as $key => $value) {
+            $queryBuilder->set($key, $value);
+        }
+
+        $queryBuilder
+            ->set('tstamp', time())
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT))
+            )
+            ->executeStatement();
+
+        return $this->fetchUserRecord($userData['username']);
+    }
+
+    /**
+     * Create a new backend user with given data
+     *
+     * @param array $userData
+     * @return array|false
+     * @throws InvalidPasswordHashException
+     */
+    protected function createUser(array $userData)
+    {
+        $saltingInstance = GeneralUtility::makeInstance(PasswordHashFactory::class)
+            ->getDefaultHashInstance($this->authInfo['loginType']);
+
+        if (!empty($userData['username'])) {
+            $userArr = [
+                'password' => $saltingInstance->getHashedPassword(md5(uniqid('', true))),
+                'crdate' => time(),
+                'tstamp' => time(),
+                'disable' => 0,
+                'starttime' => 0,
+                'endtime' => 0,
+            ];
+
+            // This will add all information, which was received from SSO
+            foreach ($userData as $key => $value) {
+                $userArr[$key] = $value;
+            }
+
+            $userArr = $this->eventDispatcher->dispatch(
+                new ChangeUserEvent($userArr)
+            )->getUserData();
+
+            /** @var QueryBuilder $queryBuilder */
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+                ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
+
+            $queryBuilder->getRestrictions()
+                ->removeAll()
+                ->add(new DeletedRestriction());
+
+            $queryBuilder->insert($this->authInfo['db_user']['table'])
+                ->values($userArr)
+                ->executeStatement();
+
+            return $this->fetchUserRecord($userData['username']);
         }
 
         return false;

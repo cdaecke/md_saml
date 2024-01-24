@@ -28,7 +28,7 @@ class SamlLoginProvider implements LoginProviderInterface
      * @param PageRenderer $pageRenderer
      * @param LoginController $loginController
      */
-    public function render(StandaloneView $view, PageRenderer $pageRenderer, LoginController $loginController)
+    public function render(StandaloneView $view, PageRenderer $pageRenderer, LoginController $loginController): void
     {
         $view->setTemplatePathAndFilename(
             GeneralUtility::getFileAbsFileName('EXT:md_saml/Resources/Private/Templates/Backend/LoginSaml.html')

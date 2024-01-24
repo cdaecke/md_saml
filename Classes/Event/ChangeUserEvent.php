@@ -27,6 +27,7 @@ final class ChangeUserEvent implements StoppableEventInterface
     {
         $this->userData = $userData;
     }
+
     public function isPropagationStopped(): bool
     {
         return false;

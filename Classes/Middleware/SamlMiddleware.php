@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace Mediadreams\MdSaml\Middleware;
 
 use Mediadreams\MdSaml\Service\SettingsService;
+use OneLogin\Saml2\Error;
+use OneLogin\Saml2\Settings;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -26,11 +28,9 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class SamlMiddleware implements MiddlewareInterface
 {
-    /** @var ResponseFactoryInterface */
-    private $responseFactory;
+    protected SettingsService $settingsService;
 
-    /** @var SettingsService */
-    protected $settingsService;
+    private ResponseFactoryInterface $responseFactory;
 
     /**
      * SamlMiddleware constructor
@@ -50,47 +50,49 @@ class SamlMiddleware implements MiddlewareInterface
      * @param ServerRequestInterface $request
      * @param RequestHandlerInterface $handler
      * @return ResponseInterface
-     * @throws \OneLogin\Saml2\Error
+     * @throws Error
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (GeneralUtility::_GP('loginProvider') == 1648123062) {
-            if (GeneralUtility::_GP('mdsamlmetadata') !== null) {
-                $loginType = GeneralUtility::_GP('loginType');
-                if ($loginType == 'frontend') {
-                    $loginType = 'FE';
-                } elseif ($loginType == 'backend') {
-                    $loginType = 'BE';
-                }
+        if (
+            (int)GeneralUtility::_GP('loginProvider') === 1648123062
+            && GeneralUtility::_GP('mdsamlmetadata') !== null
+        ) {
+            $loginType = GeneralUtility::_GP('loginType');
+            if ($loginType === 'frontend') {
+                $loginType = 'FE';
+            } elseif ($loginType === 'backend') {
+                $loginType = 'BE';
+            }
 
-                if (isset($GLOBALS['BE_USER']->user)) {
-                    try {
-                        $extSettings = $this->settingsService->getSettings($loginType);
-                        // Now we only validate SP settings
-                        $settings = new \OneLogin\Saml2\Settings($extSettings['saml'], true);
-                        $metadata = $settings->getSPMetadata();
-                        $errors = $settings->validateMetadata($metadata);
-                        if (empty($errors)) {
-                            $response = $this->responseFactory
-                                ->createResponse()
-                                ->withHeader('Content-Type', 'text/xml; charset=utf-8');
+            if (isset($GLOBALS['BE_USER']->user)) {
+                try {
+                    $extSettings = $this->settingsService->getSettings($loginType);
+                    // Now we only validate SP settings
+                    $settings = new Settings($extSettings['saml'], true);
+                    $metadata = $settings->getSPMetadata();
+                    $errors = $settings->validateMetadata($metadata);
+                    if ($errors === []) {
+                        $response = $this->responseFactory
+                            ->createResponse()
+                            ->withHeader('Content-Type', 'text/xml; charset=utf-8');
 
-                            $response->getBody()->write($metadata);
-                            return $response;
-                        }
-                        throw new \OneLogin\Saml2\Error(
-                            'Invalid SP metadata: ' . implode(', ', $errors),
-                            \OneLogin\Saml2\Error::METADATA_SP_INVALID
-                        );
-                    } catch (Exception $e) {
-                        echo $e->getMessage();
+                        $response->getBody()->write($metadata);
+                        return $response;
                     }
-                } else {
-                    $response = $this->responseFactory->createResponse();
 
-                    $response->getBody()->write('Please log into TYPO3!');
-                    return $response;
+                    throw new Error(
+                        'Invalid SP metadata: ' . implode(', ', $errors),
+                        Error::METADATA_SP_INVALID
+                    );
+                } catch (\Exception $e) {
+                    echo $e->getMessage();
                 }
+            } else {
+                $response = $this->responseFactory->createResponse();
+
+                $response->getBody()->write('Please log into TYPO3!');
+                return $response;
             }
         }
 
