@@ -20,7 +20,6 @@ use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
 use OneLogin\Saml2\ValidationError;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Psr\Http\Message\ResponseFactoryInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\InvalidPasswordHashException;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
@@ -29,6 +28,7 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
+use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
@@ -57,14 +57,11 @@ class SamlAuthService extends AbstractAuthenticationService
 
     private EventDispatcherInterface $eventDispatcher;
 
-    private ResponseFactoryInterface $responseFactory;
-
-    public function __construct(ResponseFactoryInterface $responseFactory)
+    public function __construct()
     {
         /** @var SettingsService $settingsService */
         $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
         $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
-        $this->responseFactory = $responseFactory;
     }
 
     /**
@@ -182,10 +179,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
                     $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . TYPO3_mainDir . '?loginProvider=1648123062&error=1';
-                    $response = $this->responseFactory
-                        ->createResponse(303)
-                        ->withAddedHeader('location', $url);
-                    throw new PropagateResponseException($response);
+                    throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
                 return false;
