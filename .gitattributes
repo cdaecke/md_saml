@@ -1,0 +1,14 @@
+/.Build/ export-ignore
+/.ddev/ export-ignore
+/.editorconfig export-ignore
+/.gitattributes export-ignore
+/.github/ export-ignore
+/.gitignore export-ignore
+/.php-cs-fixer.php export-ignore
+/.phpstorm.meta.php export-ignore
+/Build/ export-ignore
+/package.json export-ignore
+/phpcs.xml export-ignore
+/phpstan-baseline.neon export-ignore
+/phpstan.neon export-ignore
+/tools/ export-ignore binary
