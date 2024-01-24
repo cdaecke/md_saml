@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mediadreams\MdSaml\Service;
-
-/**
+/*
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
@@ -12,6 +10,8 @@ namespace Mediadreams\MdSaml\Service;
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
  */
+
+namespace Mediadreams\MdSaml\Service;
 
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -61,7 +61,7 @@ class SettingsService implements SingletonInterface
      *
      * @param string $loginType Can be 'FE' or 'BE'
      * @return array
-     * @throws \TYPO3\CMS\Extbase\Configuration\Exception\InvalidConfigurationTypeException
+     * @throws \RuntimeException
      */
     public function getSettings(string $loginType): array
     {
@@ -126,6 +126,7 @@ class SettingsService implements SingletonInterface
      * Get root page ID according to calling url
      *
      * @return int|null
+     * @throws \RuntimeException
      */
     private function getRootPageId(): ?int
     {

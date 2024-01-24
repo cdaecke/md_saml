@@ -6,7 +6,6 @@ namespace Mediadreams\MdSaml\EventListener;
 
 use Mediadreams\MdSaml\Service\SettingsService;
 use TYPO3\CMS\Core\Authentication\Event\BeforeUserLogoutEvent;
-
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 final class SamlBeforeUserLogoutEventListener
@@ -19,7 +18,9 @@ final class SamlBeforeUserLogoutEventListener
                 return;
             }
             // Fetch the user from the DB
-            $userRecord = $frontendUserAuthentication->getRawUserByUid($frontendUserAuthentication->userSession->getUserId() ?? 0);
+            $userRecord = $frontendUserAuthentication->getRawUserByUid(
+                $frontendUserAuthentication->userSession->getUserId() ?? 0
+            );
             if ($userRecord['md_saml_source'] ?? false) {
                 // we are responsible
                 $settingsService = GeneralUtility::makeInstance(SettingsService::class);

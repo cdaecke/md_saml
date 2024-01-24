@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mediadreams\MdSaml\Middleware;
-
-/**
+/*
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
@@ -12,6 +10,8 @@ namespace Mediadreams\MdSaml\Middleware;
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
  */
+
+namespace Mediadreams\MdSaml\Middleware;
 
 use Mediadreams\MdSaml\Service\SettingsService;
 use Psr\Http\Message\ResponseFactoryInterface;

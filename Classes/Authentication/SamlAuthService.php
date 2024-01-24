@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mediadreams\MdSaml\Authentication;
-
-/**
+/*
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
@@ -12,6 +10,8 @@ namespace Mediadreams\MdSaml\Authentication;
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
  */
+
+namespace Mediadreams\MdSaml\Authentication;
 
 use Mediadreams\MdSaml\Event\ChangeUserEvent;
 use Mediadreams\MdSaml\Service\SettingsService;
@@ -28,10 +28,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
 {
-    const SUCCESS_BREAK = 200;
-    const FAIL_CONTINUE = 100;
-    const SUCCESS_CONTINUE = 10;
-    const FAIL_BREAK = 0;
+    public const SUCCESS_BREAK = 200;
+    public const FAIL_CONTINUE = 100;
+    public const SUCCESS_CONTINUE = 10;
+    public const FAIL_BREAK = 0;
 
     protected $settingsService;
     private EventDispatcherInterface $eventDispatcher;
@@ -53,13 +53,14 @@ class SamlAuthService extends AbstractAuthenticationService
     public function authUser(array $user): int
     {
         if (!$this->inCharge()) {
-            return SELF::FAIL_CONTINUE;
+            return self::FAIL_CONTINUE;
         }
 
         $loginType = $this->pObj->loginType;
 
         if (empty($user['username'])) {
-            $errorMessage = $loginType . ' Login-attempt from %s (%s), username \'%s\', SSO authentication failed (ext:md_saml)!';
+            $errorMessage = $loginType . ' Login-attempt from %s (%s), username \'%s\','
+                . ' SSO authentication failed (ext:md_saml)!';
             $this->writelog(
                 255,
                 3,
@@ -73,9 +74,9 @@ class SamlAuthService extends AbstractAuthenticationService
                 ]
             );
 
-            return SELF::FAIL_BREAK;
+            return self::FAIL_BREAK;
         }
-        return SELF::SUCCESS_BREAK;
+        return self::SUCCESS_BREAK;
     }
 
     /**
@@ -95,9 +96,13 @@ class SamlAuthService extends AbstractAuthenticationService
         $extSettings = $this->settingsService->getSettings($loginType);
 
         if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
-            $this->db_user['check_pid_clause'] = '`pid` IN (' . $extSettings['fe_users']['databaseDefaults']['pid'] . ')';
+            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
+            $this->db_user['check_pid_clause'] = '`pid` IN (' . $pid . ')';
         }
-        if (GeneralUtility::_GP('acs') !== null || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
+        if (
+            GeneralUtility::_GP('acs') !== null
+            || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
+        ) {
             $auth = new Auth($extSettings['saml']);
             $auth->processResponse();
 
@@ -199,6 +204,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
         return false;
     }
+
     /**
      * Update a existing frontend/backend user with given data
      *
@@ -227,11 +233,11 @@ class SamlAuthService extends AbstractAuthenticationService
 
         /** @var QueryBuilder $queryBuilder */
         $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
-                      ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
+            ->getQueryBuilderForTable($this->authInfo['db_user']['table']);
 
         $queryBuilder->getRestrictions()
-                     ->removeAll()
-                     ->add(new DeletedRestriction());
+            ->removeAll()
+            ->add(new DeletedRestriction());
 
         $queryBuilder->update($this->authInfo['db_user']['table']);
         foreach ($userData as $key => $value) {
@@ -291,10 +297,11 @@ class SamlAuthService extends AbstractAuthenticationService
         if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
             return true;
         }
-        if (GeneralUtility::_GP('login-provider') === 'md_saml' &&
-            ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE') &&
-            isset($this->login['status']) &&
-            $this->login['status'] === 'login'
+        if (
+            GeneralUtility::_GP('login-provider') === 'md_saml'
+            && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
+            && isset($this->login['status'])
+            && $this->login['status'] === 'login'
         ) {
             return true;
         }

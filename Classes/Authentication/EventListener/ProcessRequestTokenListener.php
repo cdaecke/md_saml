@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Mediadreams\MdSaml\Authentication\EventListener;
-
-/**
+/*
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
@@ -12,6 +10,8 @@ namespace Mediadreams\MdSaml\Authentication\EventListener;
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
  */
+
+namespace Mediadreams\MdSaml\Authentication\EventListener;
 
 use TYPO3\CMS\Core\Authentication\Event\BeforeRequestTokenProcessedEvent;
 use TYPO3\CMS\Core\Security\RequestToken;
