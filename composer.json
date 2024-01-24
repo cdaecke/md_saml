@@ -1,14 +1,8 @@
 {
-    "name": "mediadreams/md_saml",
-    "type": "typo3-cms-extension",
-    "description": "SSO frontend or backend login with SAML authentication.",
+	"name": "mediadreams/md_saml",
+	"description": "SSO frontend or backend login with SAML authentication.",
 	"license": "GPL-2.0-or-later",
-	"authors": [
-		{
-			"name": "Christoph Daecke",
-			"role": "Developer"
-		}
-	],
+	"type": "typo3-cms-extension",
 	"keywords": [
 		"TYPO3",
 		"TYPO3 CMS",
@@ -17,46 +11,145 @@
 		"saml",
 		"adfs"
 	],
+	"authors": [
+		{
+			"name": "Christoph Daecke",
+			"role": "Developer"
+		}
+	],
 	"support": {
 		"issues": "https://github.com/cdaecke/md_saml/issues",
 		"source": "https://github.com/cdaecke/md_saml"
 	},
-    "require": {
-        "typo3/cms-core": "^11.5 || ^12.4",
-        "php": ">=7.3",
-		"onelogin/php-saml": "^4.0"
+	"require": {
+		"php": ">=7.4",
+		"onelogin/php-saml": "^4.0",
+		"typo3/cms-backend": "^11.5 || ^12.4",
+		"typo3/cms-core": "^11.5 || ^12.4"
+	},
+	"require-dev": {
+		"ergebnis/composer-normalize": "^2.28.3",
+		"friendsofphp/php-cs-fixer": "^3.48.0",
+		"phpstan/extension-installer": "^1.3.1",
+		"phpstan/phpstan": "^1.10.56",
+		"phpstan/phpstan-strict-rules": "^1.5.2",
+		"saschaegerer/phpstan-typo3": "^1.9.1",
+		"squizlabs/php_codesniffer": "^3.8.1",
+		"ssch/typo3-rector": "^1.3",
+		"tomasvotruba/type-coverage": "^0.2.1",
+		"typo3/cms-fluid": "^12.4",
+		"typo3/coding-standards": "^0.6.1"
+	},
+	"autoload": {
+		"psr-4": {
+			"Mediadreams\\MdSaml\\": "Classes"
+		}
+	},
+	"config": {
+		"allow-plugins": {
+			"ergebnis/composer-normalize": true,
+			"phpstan/extension-installer": true,
+			"sbuerk/typo3-cmscomposerinstallers-testingframework-bridge": true,
+			"typo3/class-alias-loader": true,
+			"typo3/cms-composer-installers": true
+		},
+		"bin-dir": ".Build/bin",
+		"preferred-install": {
+			"*": "dist"
+		},
+		"sort-packages": true,
+		"vendor-dir": ".Build/vendor"
 	},
 	"extra": {
 		"typo3/cms": {
-			"extension-key": "md_saml"
+			"extension-key": "md_saml",
+			"web-dir": ".Build/Web"
 		}
 	},
-    "autoload": {
-        "psr-4": {
-            "Mediadreams\\MdSaml\\": "Classes"
-        }
-    },
 	"scripts": {
 		"build:cleanup": [
+			"@prepare-release",
 			"git reset --hard",
 			"git clean -xfd"
-		],
-		"deploy:ter:setup": [
-			"@composer global require typo3/tailor"
 		],
 		"build:ter:vendors": [
 			"(mkdir -p /tmp/vendors && cd /tmp/vendors && composer require onelogin/php-saml:^4.0)",
 			"mv /tmp/vendors/ ./Resources/Libraries",
 			"echo \"require \\TYPO3\\CMS\\Core\\Utility\\ExtensionManagementUtility::extPath('$(composer config extra.typo3/cms.extension-key)') . 'Resources/Libraries/vendor/autoload.php';\" >> ext_localconf.php"
 		],
-		"deploy:ter:upload": [
-			"composer global exec -v -- tailor ter:publish --comment \"$(git tag -l --format='%(contents)' $TAG)\" $TAG"
+		"ci:composer:normalize": "@composer normalize --no-check-lock --dry-run",
+		"ci:composer:psr-verify": "@composer dumpautoload --optimize --strict-psr --no-plugins",
+		"ci:php": [
+			"@ci:php:cs-fixer",
+			"@ci:php:lint",
+			"@ci:php:rector",
+			"@ci:php:sniff",
+			"@ci:php:stan"
+		],
+		"ci:php:cs-fixer": "php-cs-fixer fix --config .php-cs-fixer.php -v --dry-run --diff",
+		"ci:php:lint": "find .*.php *.php Classes Configuration -name '*.php' -print0 | xargs -r -0 -n 1 -P 4 php -l",
+		"ci:php:rector": "./.Build/bin/rector process --config ./rector.php --dry-run",
+		"ci:php:sniff": "phpcs Classes Configuration",
+		"ci:php:stan": "phpstan --no-progress",
+		"ci:static": [
+			"@ci:composer:normalize",
+			"@ci:php:cs-fixer",
+			"@ci:php:lint",
+			"@ci:php:rector",
+			"@ci:php:sniff",
+			"@ci:php:stan"
 		],
 		"deploy:ter": [
 			"@build:cleanup",
 			"@deploy:ter:setup",
 			"@build:ter:vendors",
 			"@deploy:ter:upload"
+		],
+		"deploy:ter:setup": [
+			"@composer global require typo3/tailor"
+		],
+		"deploy:ter:upload": [
+			"composer global exec -v -- tailor ter:publish --comment \"$(git tag -l --format='%(contents)' $TAG)\" $TAG"
+		],
+		"fix:composer:normalize": "@composer normalize --no-check-lock",
+		"fix:php": [
+			"@fix:php:cs",
+			"@fix:php:rector",
+			"@fix:php:sniff"
+		],
+		"fix:php:cs": "php-cs-fixer fix --config .php-cs-fixer.php",
+		"fix:php:rector": "./.Build/bin/rector process --config ./rector.php",
+		"fix:php:sniff": "phpcbf Classes Configuration",
+		"phpstan:baseline": ".Build/bin/phpstan --generate-baseline --allow-empty-baseline",
+		"prepare-release": [
+			"rm -rf .Build",
+			"rm -rf .ddev",
+			"rm -rf .github",
+			"rm .editorconfig",
+			"rm .gitattributes",
+			"rm .gitignore",
+			"rm .php-cs-fixer.php",
+			"rm phpcs.xml",
+			"rm phpstan-baseline.neon",
+			"rm phpstan.neon"
 		]
+	},
+	"scripts-descriptions": {
+		"ci:composer:normalize": "Checks the composer.json.",
+		"ci:composer:psr-verify": "Verifies PSR-4 namespace correctness.",
+		"ci:php": "Runs all static checks for the PHP files.",
+		"ci:php:cs-fixer": "Checks the code style with the PHP Coding Standards Fixer (PHP-CS-Fixer).",
+		"ci:php:lint": "Lints the PHP files for syntax errors.",
+		"ci:php:rector": "Checks the code with TYPO3-rector.",
+		"ci:php:sniff": "Checks the code style with PHP_CodeSniffer (PHPCS).",
+		"ci:php:stan": "Checks the PHP types using PHPStan.",
+		"ci:static": "Runs all static code checks (syntax, style, types).",
+		"fix:composer:normalize": "Normalizes composer.json file content.",
+		"fix:php": "Runs all fixers for the PHP code.",
+		"fix:php:cs": "Fixes the code style with PHP-CS-Fixer.",
+		"fix:php:rector": "Fixes the code with TYPO3-rector.",
+		"fix:php:sniff": "Fixes the code style with PHP_CodeSniffer.",
+		"phpstan:baseline": "Updates the PHPStan baseline file to match the code.",
+		"prepare-release": "Removes development-only files in preparation of a TER release."
 	}
 }

@@ -4,6 +4,7 @@ namespace Mediadreams\MdSaml\Error;
 
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Auth;
+use OneLogin\Saml2\Error;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Error\PageErrorHandler\PageErrorHandlerInterface;
@@ -12,11 +13,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ForbiddenHandling implements PageErrorHandlerInterface
 {
-
-    /** 
-     * @var SettingsService $settingsService
-     */
-    protected $settingsService = null;
+    protected SettingsService $settingsService;
 
     /**
      * PageContentErrorHandler constructor.
@@ -32,13 +29,13 @@ class ForbiddenHandling implements PageErrorHandlerInterface
      * @param string $message
      * @param array $reasons
      * @return ResponseInterface
+     * @throws Error
      */
     public function handlePageError(
         ServerRequestInterface $request,
         string $message,
         array $reasons = []
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         $loginType = 'FE';
         $extSettings = $this->settingsService->getSettings($loginType);
         $auth = new Auth($extSettings['saml']);
@@ -46,5 +43,4 @@ class ForbiddenHandling implements PageErrorHandlerInterface
         // above code redirects
         return new RedirectResponse('/', 403);
     }
-
 }
