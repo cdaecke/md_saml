@@ -1,14 +1,8 @@
 {
 	"name": "mediadreams/md_saml",
-	"type": "typo3-cms-extension",
 	"description": "SSO frontend or backend login with SAML authentication.",
 	"license": "GPL-2.0-or-later",
-	"authors": [
-		{
-			"name": "Christoph Daecke",
-			"role": "Developer"
-		}
-	],
+	"type": "typo3-cms-extension",
 	"keywords": [
 		"TYPO3",
 		"TYPO3 CMS",
@@ -17,23 +11,29 @@
 		"saml",
 		"adfs"
 	],
+	"authors": [
+		{
+			"name": "Christoph Daecke",
+			"role": "Developer"
+		}
+	],
 	"support": {
 		"issues": "https://github.com/cdaecke/md_saml/issues",
 		"source": "https://github.com/cdaecke/md_saml"
 	},
 	"require": {
-		"typo3/cms-core": "^11.5 || ^12.4",
 		"php": ">=7.3",
-		"onelogin/php-saml": "^4.0"
-	},
-	"extra": {
-		"typo3/cms": {
-			"extension-key": "md_saml"
-		}
+		"onelogin/php-saml": "^4.0",
+		"typo3/cms-core": "^11.5 || ^12.4"
 	},
 	"autoload": {
 		"psr-4": {
 			"Mediadreams\\MdSaml\\": "Classes"
+		}
+	},
+	"extra": {
+		"typo3/cms": {
+			"extension-key": "md_saml"
 		}
 	},
 	"scripts": {
@@ -41,22 +41,22 @@
 			"git reset --hard",
 			"git clean -xfd"
 		],
-		"deploy:ter:setup": [
-			"@composer global require typo3/tailor"
-		],
 		"build:ter:vendors": [
 			"(mkdir -p /tmp/vendors && cd /tmp/vendors && composer require onelogin/php-saml:^4.0)",
 			"mv /tmp/vendors/ ./Resources/Libraries",
 			"echo \"require \\TYPO3\\CMS\\Core\\Utility\\ExtensionManagementUtility::extPath('$(composer config extra.typo3/cms.extension-key)') . 'Resources/Libraries/vendor/autoload.php';\" >> ext_localconf.php"
-		],
-		"deploy:ter:upload": [
-			"composer global exec -v -- tailor ter:publish --comment \"$(git tag -l --format='%(contents)' $TAG)\" $TAG"
 		],
 		"deploy:ter": [
 			"@build:cleanup",
 			"@deploy:ter:setup",
 			"@build:ter:vendors",
 			"@deploy:ter:upload"
+		],
+		"deploy:ter:setup": [
+			"@composer global require typo3/tailor"
+		],
+		"deploy:ter:upload": [
+			"composer global exec -v -- tailor ter:publish --comment \"$(git tag -l --format='%(contents)' $TAG)\" $TAG"
 		]
 	}
 }
