@@ -22,7 +22,7 @@
 		"source": "https://github.com/cdaecke/md_saml"
 	},
 	"require": {
-		"php": ">=7.3",
+		"php": ">=7.4",
 		"onelogin/php-saml": "^4.0",
 		"typo3/cms-core": "^11.5 || ^12.4"
 	},
