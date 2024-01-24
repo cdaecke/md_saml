@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
-
 use Rector\Core\ValueObject\PhpVersion;
+use Rector\Php74\Rector\LNumber\AddLiteralSeparatorToNumberRector;
 use Rector\PostRector\Rector\NameImportingPostRector;
 use Rector\Set\ValueObject\DowngradeLevelSetList;
 use Rector\Set\ValueObject\LevelSetList;
@@ -86,6 +86,8 @@ return static function (RectorConfig $rectorConfig): void {
             getcwd() . '/**/Configuration/*',
             getcwd() . '/**/Configuration/**/*.php',
         ],
+
+        AddLiteralSeparatorToNumberRector::class,
     ]);
 
     // Optional non-php file functionalities:
@@ -128,7 +130,4 @@ return static function (RectorConfig $rectorConfig): void {
             ],
         ]
     );
-
-    // Do you want to modernize your TypoScript include statements for files and move from <INCLUDE /> to @import use the FileIncludeToImportStatementVisitor
-    $rectorConfig->rule(FileIncludeToImportStatementTypoScriptRector::class);
 };
