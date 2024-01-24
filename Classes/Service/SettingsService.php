@@ -1,35 +1,33 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Service;
 
 /**
- *
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
- *
  */
 
+use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\RootlineUtility;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
 use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
-use TYPO3\CMS\Core\SingletonInterface;
 
 /**
  * Class SettingsService
- * @package Mediadreams\MdSaml\Service
  */
 class SettingsService implements SingletonInterface
 {
     protected $inCharge = false;
-    protected $extSettings = null;
+    protected $extSettings;
 
     public function setInCharge(bool $inCharge): void
     {
@@ -157,7 +155,8 @@ class SettingsService implements SingletonInterface
         $template = GeneralUtility::makeInstance(TemplateService::class);
         $template->tt_track = false;
         $rootline = GeneralUtility::makeInstance(
-            RootlineUtility::class, $pageId
+            RootlineUtility::class,
+            $pageId
         )->get();
         $template->runThroughTemplates($rootline, 0);
         $template->generateConfig();

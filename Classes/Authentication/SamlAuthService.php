@@ -1,17 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Authentication;
 
 /**
- *
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
- *
  */
 
 use Mediadreams\MdSaml\Event\ChangeUserEvent;
@@ -34,7 +33,7 @@ class SamlAuthService extends AbstractAuthenticationService
     const SUCCESS_CONTINUE = 10;
     const FAIL_BREAK = 0;
 
-    protected $settingsService = null;
+    protected $settingsService;
     private EventDispatcherInterface $eventDispatcher;
 
     public function __construct()
@@ -70,14 +69,13 @@ class SamlAuthService extends AbstractAuthenticationService
                 [
                     $this->authInfo['REMOTE_ADDR'],
                     $this->authInfo['REMOTE_HOST'],
-                    $this->login['uname']
+                    $this->login['uname'],
                 ]
             );
 
             return SELF::FAIL_BREAK;
-        } else {
-            return SELF::SUCCESS_BREAK;
         }
+        return SELF::SUCCESS_BREAK;
     }
 
     /**
@@ -88,7 +86,6 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     public function getUser()
     {
-
         if (!$this->inCharge()) {
             return false;
         }
@@ -100,7 +97,7 @@ class SamlAuthService extends AbstractAuthenticationService
         if ($loginType == 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
             $this->db_user['check_pid_clause'] = '`pid` IN (' . $extSettings['fe_users']['databaseDefaults']['pid'] . ')';
         }
-        if (null !== GeneralUtility::_GP('acs') || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
+        if (GeneralUtility::_GP('acs') !== null || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
             $auth = new Auth($extSettings['saml']);
             $auth->processResponse();
 
@@ -117,7 +114,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     [
                         $this->authInfo['REMOTE_ADDR'],
                         $this->authInfo['REMOTE_HOST'],
-                        implode(', ', $errors)
+                        implode(', ', $errors),
                     ]
                 );
 
@@ -126,30 +123,27 @@ class SamlAuthService extends AbstractAuthenticationService
                     echo '<p>' . implode(', ', $errors) . '</p>';
                     echo '<p>' . htmlentities($auth->getLastErrorReason()) . '</p>';
                     exit;
-                } else {
-                    if (isset($_POST['RelayState']) && Utils::getSelfURL() != $_POST['RelayState']) {
-                        // To avoid 'Open Redirect' attacks, before execute the
-                        // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
-                        //$auth->redirectTo($_POST['RelayState']);
-                        $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . TYPO3_mainDir . '?loginProvider=1648123062&error=1';
-                        \TYPO3\CMS\Core\Utility\HttpUtility::redirect($url);
-                    }
+                }
+                if (isset($_POST['RelayState']) && Utils::getSelfURL() != $_POST['RelayState']) {
+                    // To avoid 'Open Redirect' attacks, before execute the
+                    // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
+                    //$auth->redirectTo($_POST['RelayState']);
+                    $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . TYPO3_mainDir . '?loginProvider=1648123062&error=1';
+                    \TYPO3\CMS\Core\Utility\HttpUtility::redirect($url);
                 }
 
                 return false;
-            } else {
-                $samlAttributes = $auth->getAttributes();
-                $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
-                $record = $this->fetchUserRecord($user['username']);
-                if (is_array($record)) {
-                    if ($extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] == 1) {
-                        return $this->updateUser($record, $user);
-                    } else {
-                        return $record;
-                    }
-                } elseif ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
-                    return $this->createUser($user);
+            }
+            $samlAttributes = $auth->getAttributes();
+            $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
+            $record = $this->fetchUserRecord($user['username']);
+            if (is_array($record)) {
+                if ($extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] == 1) {
+                    return $this->updateUser($record, $user);
                 }
+                return $record;
+            } elseif ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] == 1) {
+                return $this->createUser($user);
             }
         } else {
             $auth = new Auth($extSettings['saml']);
@@ -297,7 +291,7 @@ class SamlAuthService extends AbstractAuthenticationService
         if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
             return true;
         }
-        if (GeneralUtility::_GP('login-provider') === "md_saml" &&
+        if (GeneralUtility::_GP('login-provider') === 'md_saml' &&
             ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE') &&
             isset($this->login['status']) &&
             $this->login['status'] === 'login'

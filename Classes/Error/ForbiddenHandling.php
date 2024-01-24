@@ -12,11 +12,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class ForbiddenHandling implements PageErrorHandlerInterface
 {
-
-    /** 
+    /**
      * @var SettingsService $settingsService
      */
-    protected $settingsService = null;
+    protected $settingsService;
 
     /**
      * PageContentErrorHandler constructor.
@@ -37,8 +36,7 @@ class ForbiddenHandling implements PageErrorHandlerInterface
         ServerRequestInterface $request,
         string $message,
         array $reasons = []
-    ): ResponseInterface
-    {
+    ): ResponseInterface {
         $loginType = 'FE';
         $extSettings = $this->settingsService->getSettings($loginType);
         $auth = new Auth($extSettings['saml']);
@@ -46,5 +44,4 @@ class ForbiddenHandling implements PageErrorHandlerInterface
         // above code redirects
         return new RedirectResponse('/', 403);
     }
-
 }

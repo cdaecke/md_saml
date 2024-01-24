@@ -1,17 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\LoginProvider;
 
 /**
- *
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
- *
  */
 
 use TYPO3\CMS\Backend\Controller\LoginController;

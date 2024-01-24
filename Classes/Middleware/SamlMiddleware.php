@@ -1,17 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
 /**
- *
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
- *
  */
 
 use Mediadreams\MdSaml\Service\SettingsService;
@@ -24,7 +23,6 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * Class SamlMiddleware
- * @package Mediadreams\MdSaml\Middleware
  */
 class SamlMiddleware implements MiddlewareInterface
 {
@@ -57,8 +55,8 @@ class SamlMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        if (1648123062 == GeneralUtility::_GP('loginProvider')) {
-            if (null !== GeneralUtility::_GP('mdsamlmetadata')) {
+        if (GeneralUtility::_GP('loginProvider') == 1648123062) {
+            if (GeneralUtility::_GP('mdsamlmetadata') !== null) {
                 $loginType = GeneralUtility::_GP('loginType');
                 if ($loginType == 'frontend') {
                     $loginType = 'FE';
@@ -80,12 +78,11 @@ class SamlMiddleware implements MiddlewareInterface
 
                             $response->getBody()->write($metadata);
                             return $response;
-                        } else {
-                            throw new \OneLogin\Saml2\Error(
-                                'Invalid SP metadata: ' . implode(', ', $errors),
-                                \OneLogin\Saml2\Error::METADATA_SP_INVALID
-                            );
                         }
+                        throw new \OneLogin\Saml2\Error(
+                            'Invalid SP metadata: ' . implode(', ', $errors),
+                            \OneLogin\Saml2\Error::METADATA_SP_INVALID
+                        );
                     } catch (Exception $e) {
                         echo $e->getMessage();
                     }

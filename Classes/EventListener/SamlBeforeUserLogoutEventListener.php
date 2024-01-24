@@ -1,16 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\EventListener;
 
 use Mediadreams\MdSaml\Service\SettingsService;
-use OneLogin\Saml2\Auth;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
-
 use TYPO3\CMS\Core\Authentication\Event\BeforeUserLogoutEvent;
 
-final class SamlBeforeUserLogoutEventListener {
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+final class SamlBeforeUserLogoutEventListener
+{
     public function __invoke(BeforeUserLogoutEvent $event): void
     {
         $frontendUserAuthentication = $event->getUser();

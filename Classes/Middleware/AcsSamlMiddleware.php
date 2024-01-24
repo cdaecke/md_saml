@@ -1,17 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
 /**
- *
  * This file is part of the Extension "md_saml" for TYPO3 CMS.
  *
  * For the full copyright and license information, please read the
  * LICENSE.txt file that was distributed with this source code.
  *
  * (c) 2022 Christoph Daecke <typo3@mediadreams.org>
- *
  */
 
 use Mediadreams\MdSaml\Service\SettingsService;
@@ -20,11 +19,9 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * Class SamlMiddleware
- * @package Mediadreams\MdSaml\Middleware
  */
 class AcsSamlMiddleware implements MiddlewareInterface
 {
@@ -72,6 +69,4 @@ class AcsSamlMiddleware implements MiddlewareInterface
         }
         return $handler->handle($request);
     }
-
-
 }
