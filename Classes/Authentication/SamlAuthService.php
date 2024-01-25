@@ -27,8 +27,9 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Http\PropagateResponseException;
+use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\HttpUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
 {
@@ -125,6 +126,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @throws Error
      * @throws InvalidPasswordHashException
      * @throws ValidationError
+     * @throws PropagateResponseException
      */
     public function getUser()
     {
@@ -177,7 +179,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
                     $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL') . TYPO3_mainDir . '?loginProvider=1648123062&error=1';
-                    HttpUtility::redirect($url);
+                    throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
                 return false;
