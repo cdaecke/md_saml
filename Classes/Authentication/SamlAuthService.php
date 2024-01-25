@@ -28,10 +28,10 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
-use TYPO3\CMS\Core\Log\Logger;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
+use TYPO3\CMS\Core\Log\Logger;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
@@ -229,7 +229,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL')
                         . TYPO3_mainDir
                         . '?loginProvider=1648123062&error=1';
-                     throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
+                    throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
                 return false;
