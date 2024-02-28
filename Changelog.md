@@ -1,3 +1,9 @@
+# Version 3.0.4 (2023-02-28)
+- [BUGFIX] Fix version range in ext_emconf.php
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.3...3.0.4
+
 # Version 3.0.3 (2023-02-28)
 - [BUGFIX] replace `actions/checkout@v3` with `actions/checkout@v4` in TER release script
 
