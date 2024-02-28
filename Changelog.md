@@ -1,3 +1,11 @@
+# Version 3.0.2 (2023-02-28)
+- [BUGFIX] add missing handling of requestToken for TYPO3 v12
+- [FEATURE] Setup CGL/quality-tools & cleanup code(-style). Big thanks to Julian Hoffmann (https://github.com/julianhofmann)
+- [BUGFIX] Migrate HttpUtility::redirect(). Big thanks to Julian Hoffmann (https://github.com/julianhofmann)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.1...3.0.2
+
 # Version 3.0.1 (2023-12-12)
 - [BUGFIX] set ext settings correctly
 

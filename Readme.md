@@ -43,11 +43,13 @@ Specifies info about where and how the <AuthnResponse> message of a backend (TYP
 requester, in this case our SP.<br>
 Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs`
 - `saml.sp.assertionConsumerService.auto`<br>
-If enabled, login is detected from url above (assertionConsumerService.url), the arguments "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" re not needed.
+If enabled, login is detected from url above (assertionConsumerService.url), the arguments "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" is not needed.
 If there is a login plugin on assertionConsumerService.url page and redirect method ''getpost'' is selected, redirection is done with given RelayState (should be the referrer)
 
 **Frontend**
 
+- Activate frontend login by setting the constant `plugin.tx_mdsaml.settings.fe_users.active = 1`<br>
+This will load a different login template.
 - `plugin.tx_mdsaml.settings.fe_users.saml.sp.entityId`<br>
 Identifier of the frontend SP entity  (must be a URI)<br>
 ATTENTION: `baseurl` will be attached automatically<br>
@@ -184,7 +186,7 @@ Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
 #### General
 <ul>
     <li>
-        In `LocalConfiguration.php` or `AdditionalConfiguration.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
+        In `settings.php` or `additional.php` (former `LocalConfiguration.php` or `AdditionalConfiguration.php`) the `['BE']['cookieSameSite']` must be set to `lax`:<br>
         <pre><code>$GLOBALS['TYPO3_CONF_VARS']['BE']['cookieSameSite'] = 'lax'</code></pre>
     </li>
     <li>
