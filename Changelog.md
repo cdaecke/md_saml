@@ -1,3 +1,9 @@
+# Version 3.0.3 (2023-02-28)
+- [BUGFIX] replace `actions/checkout@v3` with `actions/checkout@v4` in TER release script
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.2...3.0.3
+
 # Version 3.0.2 (2023-02-28)
 - [BUGFIX] add missing handling of requestToken for TYPO3 v12
 - [FEATURE] Setup CGL/quality-tools & cleanup code(-style). Big thanks to Julian Hoffmann (https://github.com/julianhofmann)
