@@ -133,6 +133,13 @@ class SettingsService implements SingletonInterface
             if ($site->getBase()->getHost() === $siteUrl) {
                 return $site->getRootPageId();
             }
+
+            /** @var SiteLanguage $language */
+            foreach ($site->getLanguages() as $language) {
+                if ($language->getBase()->getHost() == $siteUrl) {
+                    return $site->getRootPageId();
+                }
+            }
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
