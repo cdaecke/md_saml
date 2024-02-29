@@ -1,16 +1,22 @@
-# Version 3.0.4 (2023-02-28)
+# Version 3.0.5 (2024-02-29)
+- [BUGFIX] Add handling for mapping language(s) to different TLD(s) for BE login. Big thanks Matthias Vossen  (https://github.com/web-it-solutions)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.4...3.0.5
+
+# Version 3.0.4 (2024-02-28)
 - [BUGFIX] Fix version range in ext_emconf.php
 
 All changes
 https://github.com/cdaecke/md_saml/compare/3.0.3...3.0.4
 
-# Version 3.0.3 (2023-02-28)
+# Version 3.0.3 (2024-02-28)
 - [BUGFIX] replace `actions/checkout@v3` with `actions/checkout@v4` in TER release script
 
 All changes
 https://github.com/cdaecke/md_saml/compare/3.0.2...3.0.3
 
-# Version 3.0.2 (2023-02-28)
+# Version 3.0.2 (2024-02-28)
 - [BUGFIX] add missing handling of requestToken for TYPO3 v12
 - [FEATURE] Setup CGL/quality-tools & cleanup code(-style). Big thanks to Julian Hoffmann (https://github.com/julianhofmann)
 - [BUGFIX] Migrate HttpUtility::redirect(). Big thanks to Julian Hoffmann (https://github.com/julianhofmann)
