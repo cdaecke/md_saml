@@ -34,7 +34,7 @@ class SamlLoginProvider implements LoginProviderInterface
             GeneralUtility::getFileAbsFileName('EXT:md_saml/Resources/Private/Templates/Backend/LoginSaml.html')
         );
 
-        if (!empty(GeneralUtility::_GP('error'))) {
+        if (!empty($_REQUEST['error'])) {
             $view->assign('loginError', true);
         }
 

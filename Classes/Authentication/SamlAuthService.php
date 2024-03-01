@@ -112,7 +112,7 @@ class SamlAuthService extends AbstractAuthenticationService
             return true;
         }
 
-        return GeneralUtility::_GP('login-provider') === 'md_saml'
+        return $_REQUEST['login-provider'] === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
             && $this->login['status'] === 'login';
@@ -144,7 +144,7 @@ class SamlAuthService extends AbstractAuthenticationService
         }
 
         if (
-            GeneralUtility::_GP('acs') !== null
+            $_REQUEST['acs'] !== null
             || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
         ) {
             $auth = new Auth($extSettings['saml']);
