@@ -220,6 +220,7 @@ class SamlAuthService extends AbstractAuthenticationService
     protected function getUserArrayForDb(array $samlAttributes, array $extSettings): array
     {
         $userArr = [];
+        $userArr['md_saml_source'] = 1;
         $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
         // Add default values from TypoScript settings to user array
@@ -230,10 +231,6 @@ class SamlAuthService extends AbstractAuthenticationService
             if ($val !== '') {
                 $userArr[$key] = $val;
             }
-        }
-
-        if ($this->authInfo['db_user']['table'] === 'fe_users') {
-            $userArr['md_saml_source'] = 1;
         }
 
         // Add values from SSO provider

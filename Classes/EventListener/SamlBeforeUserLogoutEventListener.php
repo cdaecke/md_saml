@@ -12,16 +12,18 @@ final class SamlBeforeUserLogoutEventListener
 {
     public function __invoke(BeforeUserLogoutEvent $event): void
     {
-        $frontendUserAuthentication = $event->getUser();
-        if ($frontendUserAuthentication->userSession->getUserId() > 0) {
-            if ($frontendUserAuthentication->userSession->isAnonymous()) {
+        $userAuthentication = $event->getUser();
+
+        if ($userAuthentication->userSession->getUserId() > 0) {
+            if ($userAuthentication->userSession->isAnonymous()) {
                 return;
             }
 
             // Fetch the user from the DB
-            $userRecord = $frontendUserAuthentication->getRawUserByUid(
-                $frontendUserAuthentication->userSession->getUserId() ?? 0
+            $userRecord = $userAuthentication->getRawUserByUid(
+                $userAuthentication->userSession->getUserId() ?? 0
             );
+
             if ($userRecord['md_saml_source'] ?? false) {
                 // we are responsible
                 $settingsService = GeneralUtility::makeInstance(SettingsService::class);
