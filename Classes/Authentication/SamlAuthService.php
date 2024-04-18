@@ -118,6 +118,56 @@ class SamlAuthService extends AbstractAuthenticationService
             && $this->login['status'] === 'login';
     }
 
+
+        /**
+     * creates the PidRestriction for a given table and pid
+     * @param int $pid
+     * @param string $table
+     * @return QueryRestrictionContainerInterface
+     */
+    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface {
+            $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
+            $restrictionContainer->add(
+                GeneralUtility::makeInstance(
+                    PageIdListRestriction::class,
+                    [$table],
+                    [$pid]
+                )
+            );
+            return $restrictionContainer;
+    }
+
+    
+    /**
+     * Extends fetchUserRecord to respects the configured fe_user pid.
+     *
+     * @param $username
+     * @param $extraWhere
+     * @param $dbUserSetup
+     * @return false|mixed[]
+     */
+    public function fetchUserRecord($username, $extraWhere = '', $dbUserSetup = '')
+    {
+        $dbUser = is_array($dbUserSetup) ? $dbUserSetup : $this->db_user;
+
+        $loginType = $this->pObj->loginType;
+
+        $extSettings = $this->settingsService->getSettings($loginType);
+
+        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
+            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
+            $expressionBuilder = $queryBuilder->expr();
+            $dbUser['enable_clause'] = $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
+                ['fe_users' => 'fe_users'],
+                $expressionBuilder
+            );
+        }
+
+        return parent::fetchUserRecord($username, $extraWhere, $dbUser);
+    }
+
+    
     /**
      * Get user data
      * Is called to get additional information after login.
@@ -137,11 +187,6 @@ class SamlAuthService extends AbstractAuthenticationService
         $loginType = $this->pObj->loginType;
 
         $extSettings = $this->settingsService->getSettings($loginType);
-
-        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
-            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
-            $this->db_user['check_pid_clause'] = '`pid` IN (' . $pid . ')';
-        }
 
         if (
             $_REQUEST['acs'] !== null
