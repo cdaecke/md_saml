@@ -305,7 +305,7 @@ class SamlAuthService extends AbstractAuthenticationService
         )->getUserData();
 
         foreach ($userData as $key => $value) {
-            if ($localUser[$key] !== $value) {
+            if ($localUser[$key] != $value) {
                 $changed = true;
                 break;
             }
