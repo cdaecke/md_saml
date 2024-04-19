@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Service;
 
+use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
+use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -30,6 +33,13 @@ class SettingsService implements SingletonInterface
     protected bool $inCharge = false;
 
     protected array $extSettings = [];
+
+    protected EventDispatcherInterface $eventDispatcher;
+
+    public function __construct()
+    {
+        $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
+    }
 
     public function getInCharge(): bool
     {
@@ -62,6 +72,10 @@ class SettingsService implements SingletonInterface
      */
     public function getSettings(string $loginType): array
     {
+        $this->extSettings = $this->eventDispatcher->dispatch(
+            new BeforeSettingsAreProcessedEvent($loginType, $this->extSettings)
+        )->getSettings();
+
         if ($this->extSettings === []) {
             // Backend mode, no TSFE loaded
             if (!isset($GLOBALS['TSFE'])) {
@@ -93,7 +107,9 @@ class SettingsService implements SingletonInterface
 
         $this->extSettings = $this->convertBooleans($this->extSettings);
 
-        return $this->extSettings;
+        return $this->eventDispatcher->dispatch(
+            new AfterSettingsAreProcessedEvent($loginType, $this->extSettings)
+        )->getSettings();
     }
 
     /**
