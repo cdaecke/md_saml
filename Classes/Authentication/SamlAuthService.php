@@ -27,6 +27,9 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\DefaultRestrictionContainer;
+use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -137,7 +140,7 @@ class SamlAuthService extends AbstractAuthenticationService
             return $restrictionContainer;
     }
 
-    
+
     /**
      * Extends fetchUserRecord to respects the configured fe_user pid.
      *
@@ -158,7 +161,7 @@ class SamlAuthService extends AbstractAuthenticationService
             $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
             $expressionBuilder = $queryBuilder->expr();
-            $dbUser['enable_clause'] = $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
+            $dbUser['enable_clause'] = (string) $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
                 ['fe_users' => 'fe_users'],
                 $expressionBuilder
             );
