@@ -26,7 +26,11 @@ use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
+use TYPO3\CMS\Core\Database\Query\QueryHelper;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\DefaultRestrictionContainer;
+use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -137,7 +141,7 @@ class SamlAuthService extends AbstractAuthenticationService
             return $restrictionContainer;
     }
 
-    
+
     /**
      * Extends fetchUserRecord to respects the configured fe_user pid.
      *
@@ -158,13 +162,37 @@ class SamlAuthService extends AbstractAuthenticationService
             $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
             $expressionBuilder = $queryBuilder->expr();
-            $dbUser['enable_clause'] = $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
+            $dbUser['enable_clause'] = (string) $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
                 ['fe_users' => 'fe_users'],
                 $expressionBuilder
             );
         }
 
-        return parent::fetchUserRecord($username, $extraWhere, $dbUser);
+        $user = false;
+        if ($username || $extraWhere) {
+            $query = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($dbUser['table']);
+            $query->getRestrictions()->removeAll()
+                ->add(GeneralUtility::makeInstance(DeletedRestriction::class));
+            $constraints = array_filter([
+                QueryHelper::stripLogicalOperatorPrefix($dbUser['enable_clause']),
+                QueryHelper::stripLogicalOperatorPrefix($extraWhere),
+            ]);
+            if (!empty($username)) {
+                array_unshift(
+                    $constraints,
+                    $query->expr()->eq(
+                        $dbUser['username_column'],
+                        $query->createNamedParameter($username)
+                    )
+                );
+            }
+            $user = $query->select('*')
+                ->from($dbUser['table'])
+                ->where(...$constraints)
+                ->executeQuery()
+                ->fetchAssociative();
+        }
+        return $user;
     }
 
     
