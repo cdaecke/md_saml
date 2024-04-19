@@ -26,7 +26,6 @@ use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
-use TYPO3\CMS\Core\Database\Query\QueryHelper;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DefaultRestrictionContainer;
 use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
@@ -168,31 +167,7 @@ class SamlAuthService extends AbstractAuthenticationService
             );
         }
 
-        $user = false;
-        if ($username || $extraWhere) {
-            $query = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable($dbUser['table']);
-            $query->getRestrictions()->removeAll()
-                ->add(GeneralUtility::makeInstance(DeletedRestriction::class));
-            $constraints = array_filter([
-                QueryHelper::stripLogicalOperatorPrefix($dbUser['enable_clause']),
-                QueryHelper::stripLogicalOperatorPrefix($extraWhere),
-            ]);
-            if (!empty($username)) {
-                array_unshift(
-                    $constraints,
-                    $query->expr()->eq(
-                        $dbUser['username_column'],
-                        $query->createNamedParameter($username)
-                    )
-                );
-            }
-            $user = $query->select('*')
-                ->from($dbUser['table'])
-                ->where(...$constraints)
-                ->executeQuery()
-                ->fetchAssociative();
-        }
-        return $user;
+        return parent::fetchUserRecord($username, $extraWhere, $dbUser);
     }
 
     
