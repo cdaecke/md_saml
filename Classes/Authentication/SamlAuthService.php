@@ -121,8 +121,7 @@ class SamlAuthService extends AbstractAuthenticationService
             && $this->login['status'] === 'login';
     }
 
-
-        /**
+    /**
      * creates the PidRestriction for a given table and pid
      * @param int $pid
      * @param string $table
@@ -139,7 +138,6 @@ class SamlAuthService extends AbstractAuthenticationService
             );
             return $restrictionContainer;
     }
-
 
     /**
      * Extends fetchUserRecord to respects the configured fe_user pid.
@@ -170,7 +168,6 @@ class SamlAuthService extends AbstractAuthenticationService
         return parent::fetchUserRecord($username, $extraWhere, $dbUser);
     }
 
-    
     /**
      * Get user data
      * Is called to get additional information after login.
@@ -192,7 +189,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $extSettings = $this->settingsService->getSettings($loginType);
 
         if (
-            $_REQUEST['acs'] !== null
+            isset($_REQUEST['acs'])
             || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
         ) {
             $auth = new Auth($extSettings['saml']);

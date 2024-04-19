@@ -56,7 +56,7 @@ class SamlMiddleware implements MiddlewareInterface
         if (
             isset($_REQUEST['loginProvider'])
             && (int)$_REQUEST['loginProvider'] === 1648123062
-            && $_REQUEST['mdsamlmetadata'] !== null
+            && isset($_REQUEST['mdsamlmetadata'])
         ) {
             $loginType = $_REQUEST['loginType'];
             if ($loginType === 'frontend') {
