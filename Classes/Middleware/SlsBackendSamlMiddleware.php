@@ -21,7 +21,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Class SlsFrontendSamlMiddleware
  */
-class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
+class SlsBackendSamlMiddleware extends SlsSamlMiddleware
 {
     /**
      * Process request
