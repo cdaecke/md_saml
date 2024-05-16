@@ -115,7 +115,7 @@ class SamlAuthService extends AbstractAuthenticationService
             return true;
         }
 
-        return $_REQUEST['login-provider'] === 'md_saml'
+        return ($_REQUEST['login-provider'] ?? '') === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
             && $this->login['status'] === 'login';
