@@ -16,6 +16,7 @@ namespace Mediadreams\MdSaml\Service;
 use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
 use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -76,26 +77,37 @@ class SettingsService implements SingletonInterface
             new BeforeSettingsAreProcessedEvent($loginType, $this->extSettings)
         )->getSettings();
 
-        if ($this->extSettings === []) {
-            // Backend mode, no TSFE loaded
-            if (!isset($GLOBALS['TSFE'])) {
-                $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
-                $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
-            } else {
-                /** @var ConfigurationManager $configurationManager */
-                $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
-                $this->extSettings = $configurationManager->getConfiguration(
-                    ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
-                    'Mdsaml',
-                    ''
-                );
-            }
+        try {
+            if ($this->extSettings === []) {
+                // Backend mode, no TSFE loaded
+                if (!isset($GLOBALS['TSFE'])) {
+                    $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
+                    $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
+                } else {
+                    /** @var ConfigurationManager $configurationManager */
+                    $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
+                    $this->extSettings = $configurationManager->getConfiguration(
+                        ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
+                        'Mdsaml',
+                        ''
+                    );
+                }
 
-            if ((is_countable($this->extSettings) ? count($this->extSettings) : 0) === 0) {
-                throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
+                if ((is_countable($this->extSettings) ? count($this->extSettings) : 0) === 0) {
+                    throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
+                }
             }
+        } catch (\RuntimeException $e) {
+            $logger = GeneralUtility::makeInstance(LogManager::class)
+                ->getLogger(__CLASS__);
+            $logger->error(
+                'The TypoScript of ext:md_saml was not loaded.',
+                [
+                    'rootPageId' => $this->getRootPageId(),
+                ]
+            );
+            return [];
         }
-
         // Merge settings according to given context (frontend or backend)
         $this->extSettings['saml'] = array_replace_recursive($this->extSettings['saml'], $this->extSettings[mb_strtolower($loginType) . '_users']['saml']);
 
