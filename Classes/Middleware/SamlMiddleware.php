@@ -21,7 +21,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
  * Class SamlMiddleware
@@ -55,10 +54,11 @@ class SamlMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (
-            (int)GeneralUtility::_GP('loginProvider') === 1648123062
-            && GeneralUtility::_GP('mdsamlmetadata') !== null
+            isset($_REQUEST['loginProvider'])
+            && (int)$_REQUEST['loginProvider'] === 1648123062
+            && isset($_REQUEST['mdsamlmetadata'])
         ) {
-            $loginType = GeneralUtility::_GP('loginType');
+            $loginType = $_REQUEST['loginType'];
             if ($loginType === 'frontend') {
                 $loginType = 'FE';
             } elseif ($loginType === 'backend') {

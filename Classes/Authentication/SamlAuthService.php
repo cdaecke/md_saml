@@ -28,6 +28,9 @@ use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
 use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\DefaultRestrictionContainer;
+use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
+use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Log\Logger;
@@ -138,10 +141,57 @@ class SamlAuthService extends AbstractAuthenticationService
             return true;
         }
 
-        return GeneralUtility::_GP('login-provider') === 'md_saml'
+        return ($_REQUEST['login-provider'] ?? '') === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
             && $this->login['status'] === 'login';
+    }
+
+    /**
+     * creates the PidRestriction for a given table and pid
+     * @param int $pid
+     * @param string $table
+     * @return QueryRestrictionContainerInterface
+     */
+    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface {
+            $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
+            $restrictionContainer->add(
+                GeneralUtility::makeInstance(
+                    PageIdListRestriction::class,
+                    [$table],
+                    [$pid]
+                )
+            );
+            return $restrictionContainer;
+    }
+
+    /**
+     * Extends fetchUserRecord to respects the configured fe_user pid.
+     *
+     * @param $username
+     * @param $extraWhere
+     * @param $dbUserSetup
+     * @return false|mixed[]
+     */
+    public function fetchUserRecord($username, $extraWhere = '', $dbUserSetup = '')
+    {
+        $dbUser = is_array($dbUserSetup) ? $dbUserSetup : $this->db_user;
+
+        $loginType = $this->pObj->loginType;
+
+        $extSettings = $this->settingsService->getSettings($loginType);
+
+        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
+            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
+            $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
+            $expressionBuilder = $queryBuilder->expr();
+            $dbUser['enable_clause'] = (string) $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
+                ['fe_users' => 'fe_users'],
+                $expressionBuilder
+            );
+        }
+
+        return parent::fetchUserRecord($username, $extraWhere, $dbUser);
     }
 
     /**
@@ -171,13 +221,8 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $extSettings = $this->settingsService->getSettings($loginType);
 
-        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
-            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
-            $this->db_user['check_pid_clause'] = '`pid` IN (' . $pid . ')';
-        }
-
         if (
-            GeneralUtility::_GP('acs') !== null
+            isset($_REQUEST['acs'])
             || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
         ) {
             $auth = new Auth($extSettings['saml']);
@@ -306,6 +351,7 @@ class SamlAuthService extends AbstractAuthenticationService
         );
 
         $userArr = [];
+        $userArr['md_saml_source'] = 1;
         $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
         // Add default values from TypoScript settings to user array
@@ -316,10 +362,6 @@ class SamlAuthService extends AbstractAuthenticationService
             if ($val !== '') {
                 $userArr[$key] = $val;
             }
-        }
-
-        if ($this->authInfo['db_user']['table'] === 'fe_users') {
-            $userArr['md_saml_source'] = 1;
         }
 
         // Add values from SSO provider
@@ -353,7 +395,7 @@ class SamlAuthService extends AbstractAuthenticationService
         )->getUserData();
 
         foreach ($userData as $key => $value) {
-            if ($localUser[$key] !== $value) {
+            if ($localUser[$key] != $value) {
                 $changed = true;
                 break;
             }
