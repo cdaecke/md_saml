@@ -80,7 +80,7 @@ class SettingsService implements SingletonInterface
             // Backend mode, no TSFE loaded
             if (!isset($GLOBALS['TSFE'])) {
                 $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
-                $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'];
+                $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'] ?? [];
             } else {
                 /** @var ConfigurationManager $configurationManager */
                 $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
