@@ -12,7 +12,7 @@ Frontend login:
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
-- TYPO3 v11.5 or v12.4
+- TYPO3 v12.4
 
 ## Installation
 - Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
