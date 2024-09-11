@@ -7,7 +7,7 @@ plugin.tx_mdsaml {
     mdsamlSpBaseUrl =
 
     // SAML-Metadata should be public available without Typo3-BE-Login
-    metadataPublic = false
+    publicMetadata = false
 
     // Backend users
     be_users {

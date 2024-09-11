@@ -67,7 +67,7 @@ class SamlMiddleware implements MiddlewareInterface
 
             $extSettings = $this->settingsService->getSettings($loginType);
 
-            if (isset($GLOBALS['BE_USER']->user) || (isset($extSettings['metadataPublic']) && ($extSettings['metadataPublic'] === true))) {
+            if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {
                 try {
                     // Now we only validate SP settings
                     $settings = new Settings($extSettings['saml'], true);
