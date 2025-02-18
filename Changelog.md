@@ -1,3 +1,16 @@
+# Version 3.0.6 (2025-02-18)
+- [TASK] activate SSO for backend
+- [TASK] Update SamlAuthService.php. Big thanks [AlexKvrlp](https://github.com/AlexKvrlp)
+- [TASK] Create BeforeSettingsAreProcessedEvent, Create AfterSettingsAreProcessedEvent. Big thanks [AlexKvrlp](https://github.com/AlexKvrlp)
+- [BUGFIX] Renamed SlsFrontendSamlMiddleware to SlsBackendSamlMiddleware. Big thanks [Christian Bülter](https://github.com/christianbltr)
+- [BUGFIX] Renamed SlsFrontendSamlMiddleware to SlsBackendSamlMiddleware. Big thanks [Christian Bülter](https://github.com/christianbltr)
+- [TASK] Handle unset 'login-provider' in SamlAuthService. Big thanks [Christian Bülter](https://github.com/christianbltr)
+- [BUGFIX] Fix mismatching type. Big thanks to [Julian Hoffmann](https://github.com/julianhofmann)
+- [TASK] make SAML-Metadata (optionally) also available without Typo3-BE-login. Big thanks to [Christoph Straßer](https://github.com/christophs78)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.5...3.0.6
+
 # Version 3.0.5 (2024-02-29)
 - [BUGFIX] Add handling for mapping language(s) to different TLD(s) for BE login. Big thanks Matthias Vossen  (https://github.com/web-it-solutions)
 
