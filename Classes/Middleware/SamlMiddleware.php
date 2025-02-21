@@ -21,6 +21,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class SamlMiddleware
@@ -37,7 +38,8 @@ class SamlMiddleware implements MiddlewareInterface
      * @param ResponseFactoryInterface $responseFactory
      * @param SettingsService $settingsService
      */
-    public function __construct(ResponseFactoryInterface $responseFactory, SettingsService $settingsService)
+    public function __construct(ResponseFactoryInterface $responseFactory, SettingsService $settingsService,
+        private readonly LoggerInterface $logger)
     {
         $this->responseFactory = $responseFactory;
         $this->settingsService = $settingsService;
@@ -54,47 +56,53 @@ class SamlMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         if (
-            isset($_REQUEST['loginProvider'])
-            && (int)$_REQUEST['loginProvider'] === 1648123062
-            && isset($_REQUEST['mdsamlmetadata'])
+            !isset($_REQUEST['loginProvider'])
+            || (int)$_REQUEST['loginProvider'] !== 1648123062
+            || !isset($_REQUEST['mdsamlmetadata'])
         ) {
-            $loginType = $_REQUEST['loginType'];
-            if ($loginType === 'frontend') {
-                $loginType = 'FE';
-            } elseif ($loginType === 'backend') {
-                $loginType = 'BE';
-            }
+            // not our business, do nothing
+            return $handler->handle($request);
+        }
+        $loginType = $_REQUEST['loginType'];
+        if ($loginType === 'frontend') {
+            $loginType = 'FE';
+        } elseif ($loginType === 'backend') {
+            $loginType = 'BE';
+        }
 
-            $extSettings = $this->settingsService->getSettings($loginType);
+        $extSettings = $this->settingsService->getSettings($loginType);
+        if (!$extSettings) {
+            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+            return [];
+        }
 
-            if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {
-                try {
-                    // Now we only validate SP settings
-                    $settings = new Settings($extSettings['saml'], true);
-                    $metadata = $settings->getSPMetadata();
-                    $errors = $settings->validateMetadata($metadata);
-                    if ($errors === []) {
-                        $response = $this->responseFactory
-                            ->createResponse()
-                            ->withHeader('Content-Type', 'text/xml; charset=utf-8');
+        if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {
+            try {
+                // Now we only validate SP settings
+                $settings = new Settings($extSettings['saml'], true);
+                $metadata = $settings->getSPMetadata();
+                $errors = $settings->validateMetadata($metadata);
+                if ($errors === []) {
+                    $response = $this->responseFactory
+                        ->createResponse()
+                        ->withHeader('Content-Type', 'text/xml; charset=utf-8');
 
-                        $response->getBody()->write($metadata);
-                        return $response;
-                    }
-
-                    throw new Error(
-                        'Invalid SP metadata: ' . implode(', ', $errors),
-                        Error::METADATA_SP_INVALID
-                    );
-                } catch (\Exception $e) {
-                    echo $e->getMessage();
+                    $response->getBody()->write($metadata);
+                    return $response;
                 }
-            } else {
-                $response = $this->responseFactory->createResponse();
 
-                $response->getBody()->write('Please log into TYPO3!');
-                return $response;
+                throw new Error(
+                    'Invalid SP metadata: ' . implode(', ', $errors),
+                    Error::METADATA_SP_INVALID
+                );
+            } catch (\Exception $e) {
+                echo $e->getMessage();
             }
+        } else {
+            $response = $this->responseFactory->createResponse();
+
+            $response->getBody()->write('Please log into TYPO3!');
+            return $response;
         }
 
         return $handler->handle($request);
