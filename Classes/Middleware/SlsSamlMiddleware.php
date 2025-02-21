@@ -30,7 +30,7 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class SlsSamlMiddleware implements MiddlewareInterface
 {
-    protected SettingsService $settingsService;
+
     protected string $context = '';
 
     /**
@@ -38,9 +38,8 @@ class SlsSamlMiddleware implements MiddlewareInterface
      *
      * @param SettingsService $settingsService
      */
-    public function __construct(SettingsService $settingsService)
+    public function __construct(protected SettingsService $settingsService)
     {
-        $this->settingsService = $settingsService;
     }
 
     /**
@@ -65,7 +64,7 @@ class SlsSamlMiddleware implements MiddlewareInterface
 
             if (!empty($errors)) {
                 $logger = GeneralUtility::makeInstance(LogManager::class)
-                    ->getLogger(__CLASS__);
+                    ->getLogger(self::class);
 
                 $logger->log(
                     LogLevel::ERROR,

@@ -129,7 +129,7 @@ class SettingsService implements SingletonInterface
         $template->runThroughTemplates($rootline, 0);
         $template->generateConfig();
 
-        $typoScriptSetup = $template->setup;
+        $typoScriptSetup = $GLOBALS['TYPO3_REQUEST']->getAttribute('frontend.typoscript')->getSetupArray();
 
         return GeneralUtility::removeDotsFromTS($typoScriptSetup);
     }
