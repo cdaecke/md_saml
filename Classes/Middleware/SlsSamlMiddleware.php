@@ -28,7 +28,7 @@ use Psr\Log\LoggerInterface;
  */
 class SlsSamlMiddleware implements MiddlewareInterface
 {
-    protected SettingsService $settingsService;
+
     protected string $context = '';
 
     /**
@@ -36,9 +36,8 @@ class SlsSamlMiddleware implements MiddlewareInterface
      *
      * @param SettingsService $settingsService
      */
-    public function __construct(SettingsService $settingsService, protected readonly LoggerInterface $logger)
+    public function __construct(protected SettingsService $settingsService, protected readonly LoggerInterface $logger)
     {
-        $this->settingsService = $settingsService;
     }
 
     /**
