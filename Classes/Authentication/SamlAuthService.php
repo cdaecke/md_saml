@@ -220,6 +220,10 @@ class SamlAuthService extends AbstractAuthenticationService
         $loginType = $this->pObj->loginType;
 
         $extSettings = $this->settingsService->getSettings($loginType);
+        if (!$extSettings) {
+            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+            return false;
+        }
 
         if (
             isset($_REQUEST['acs'])
