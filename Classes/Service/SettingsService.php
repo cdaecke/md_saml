@@ -16,6 +16,7 @@ namespace Mediadreams\MdSaml\Service;
 use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
 use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -36,7 +37,7 @@ class SettingsService implements SingletonInterface
 
     protected EventDispatcherInterface $eventDispatcher;
 
-    public function __construct()
+    public function __construct(private readonly LoggerInterface $logger)
     {
         $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
     }
@@ -91,8 +92,9 @@ class SettingsService implements SingletonInterface
                 );
             }
 
-            if ((is_countable($this->extSettings) ? count($this->extSettings) : 0) === 0) {
-                throw new \RuntimeException('The TypoScript of ext:md_saml was not loaded.', 1648151884);
+            if (!$this->extSettings) {
+                $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+                return [];
             }
         }
 
