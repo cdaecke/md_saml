@@ -27,20 +27,14 @@ use Psr\Http\Server\RequestHandlerInterface;
  */
 class AcsSamlMiddleware implements MiddlewareInterface
 {
-    protected SettingsService $settingsService;
-
-    private ResponseFactoryInterface $responseFactory;
-
     /**
      * SamlMiddleware constructor
      *
      * @param ResponseFactoryInterface $responseFactory
      * @param SettingsService $settingsService
      */
-    public function __construct(ResponseFactoryInterface $responseFactory, SettingsService $settingsService)
+    public function __construct(private readonly ResponseFactoryInterface $responseFactory, protected SettingsService $settingsService)
     {
-        $this->responseFactory = $responseFactory;
-        $this->settingsService = $settingsService;
     }
 
     /**

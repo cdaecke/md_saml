@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
-use Rector\Core\ValueObject\PhpVersion;
+use Rector\ValueObject\PhpVersion;
 use Rector\Php74\Rector\LNumber\AddLiteralSeparatorToNumberRector;
 use Rector\PostRector\Rector\NameImportingPostRector;
 use Rector\Set\ValueObject\DowngradeLevelSetList;
@@ -13,11 +13,21 @@ use Rector\TypeDeclaration\Rector\ClassMethod\AddArrayReturnDocTypeRector;
 use Ssch\TYPO3Rector\Configuration\Typo3Option;
 use Ssch\TYPO3Rector\FileProcessor\Composer\Rector\ExtensionComposerRector;
 use Ssch\TYPO3Rector\FileProcessor\Composer\Rector\RemoveCmsPackageDirFromExtraComposerRector;
-use Ssch\TYPO3Rector\FileProcessor\TypoScript\Rector\v10\v0\ExtbasePersistenceTypoScriptRector;
+// not found with latest version of ssch/typo3-rector
+//use Ssch\TYPO3Rector\FileProcessor\TypoScript\Rector\v10\v0\ExtbasePersistenceTypoScriptRector;
 use Ssch\TYPO3Rector\FileProcessor\TypoScript\Rector\v9\v0\FileIncludeToImportStatementTypoScriptRector;
-use Ssch\TYPO3Rector\Rector\General\ExtEmConfRector;
+use Ssch\TYPO3Rector\CodeQuality\General\ExtEmConfRector;
 use Ssch\TYPO3Rector\Set\Typo3LevelSetList;
 
+/**
+ * TYPO3 >= v12
+ * PHP >= 8.1
+ *
+ * Use rector:
+ * composer require ssch/typo3-rector:^2.6 rector/rector:^1.2 --dev
+ * 
+ *
+ */
 return static function (RectorConfig $rectorConfig): void {
 
     // If you want to override the number of spaces for your typoscript files you can define it here, the default value is 4
@@ -27,10 +37,10 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->sets([
         SetList::CODE_QUALITY,
         SetList::CODING_STYLE,
-        LevelSetList::UP_TO_PHP_74,
-        DowngradeLevelSetList::DOWN_TO_PHP_74,
+        LevelSetList::UP_TO_PHP_81,
+        DowngradeLevelSetList::DOWN_TO_PHP_81,
         SetList::TYPE_DECLARATION,
-        Typo3LevelSetList::UP_TO_TYPO3_11,
+        Typo3LevelSetList::UP_TO_TYPO3_12,
     ]);
 
     $rectorConfig->parallel(120, 5);
@@ -52,7 +62,7 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->importShortClasses(false);
 
     // Define your target version which you want to support
-    $rectorConfig->phpVersion(PhpVersion::PHP_74);
+    $rectorConfig->phpVersion(PhpVersion::PHP_81);
 
     // If you only want to process one/some TYPO3 extension(s), you can specify its path(s) here.
     // If you use the option --config change __DIR__ to getcwd()
@@ -96,12 +106,16 @@ return static function (RectorConfig $rectorConfig): void {
     // Rewrite your extbase persistence class mapping from typoscript into php according to official docs.
     // This processor will create a summarized file with all of the typoscript rewrites combined into a single file.
     // The filename can be passed as argument, "Configuration_Extbase_Persistence_Classes.php" is default.
+
+    // not found with latest version of ssch/typo3-rector
+    /*
     $rectorConfig->ruleWithConfiguration(
         ExtbasePersistenceTypoScriptRector::class,
         [
             ExtbasePersistenceTypoScriptRector::FILENAME => 'Configuration_Extbase_Persistence_Classes.php',
         ]
     );
+    */
 
     // Add some general TYPO3 rules
 #    $rectorConfig->rule(ConvertImplicitVariablesToExplicitGlobalsRector::class);
@@ -109,7 +123,7 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->ruleWithConfiguration(
         ExtEmConfRector::class,
         [
-            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '11.5.0-12.4.99',
+            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '12.4.0-12.4.99',
             ExtEmConfRector::ADDITIONAL_VALUES_TO_BE_REMOVED => [
                 'dependencies',
                 'conflicts',

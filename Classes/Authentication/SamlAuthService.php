@@ -61,7 +61,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
     protected SettingsService $settingsService;
 
-    private EventDispatcherInterface $eventDispatcher;
+    private readonly EventDispatcherInterface $eventDispatcher;
 
     public function __construct()
     {
@@ -264,7 +264,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 if ($auth->getSettings()->isDebugActive()) {
                     echo '<h1>SAML error</h1>';
                     echo '<p>' . implode(', ', $errors) . '</p>';
-                    echo '<p>' . htmlentities($auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
+                    echo '<p>' . htmlentities((string) $auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
                     static::getLogger()->debug(
                         'SAML authentification: ' . __METHOD__ . ' EXIT in line ' . __LINE__
                     );
@@ -276,7 +276,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
                     $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL')
-                        . TYPO3_mainDir
+                        . \TYPO3_MAINDIR
                         . '?loginProvider=1648123062&error=1';
                     throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
@@ -360,8 +360,8 @@ class SamlAuthService extends AbstractAuthenticationService
 
         // Add default values from TypoScript settings to user array
         foreach ($extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] as $key => $val) {
-            $key = trim($key);
-            $val = trim($val);
+            $key = trim((string) $key);
+            $val = trim((string) $val);
 
             if ($val !== '') {
                 $userArr[$key] = $val;

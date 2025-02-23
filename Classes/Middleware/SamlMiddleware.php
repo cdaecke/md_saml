@@ -28,22 +28,17 @@ use Psr\Log\LoggerInterface;
  */
 class SamlMiddleware implements MiddlewareInterface
 {
-    protected SettingsService $settingsService;
-
-    private ResponseFactoryInterface $responseFactory;
-
     /**
      * SamlMiddleware constructor
      *
      * @param ResponseFactoryInterface $responseFactory
      * @param SettingsService $settingsService
      */
-    public function __construct(ResponseFactoryInterface $responseFactory, SettingsService $settingsService,
-        private readonly LoggerInterface $logger)
-    {
-        $this->responseFactory = $responseFactory;
-        $this->settingsService = $settingsService;
-    }
+    public function __construct(
+        private readonly ResponseFactoryInterface $responseFactory, 
+        protected SettingsService $settingsService, 
+        private readonly LoggerInterface $logger
+    ){}
 
     /**
      * Process request
