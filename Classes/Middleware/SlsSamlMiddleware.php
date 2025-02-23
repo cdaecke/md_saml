@@ -20,9 +20,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use TYPO3\CMS\Core\Log\LogLevel;
-use TYPO3\CMS\Core\Log\LogManager;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
+use Psr\Log\LoggerInterface;
 
 /**
  * Class SlsSamlMiddleware
@@ -38,7 +36,7 @@ class SlsSamlMiddleware implements MiddlewareInterface
      *
      * @param SettingsService $settingsService
      */
-    public function __construct(protected SettingsService $settingsService)
+    public function __construct(protected SettingsService $settingsService, protected readonly LoggerInterface $logger)
     {
     }
 
@@ -63,11 +61,7 @@ class SlsSamlMiddleware implements MiddlewareInterface
             $errors = $auth->getErrors();
 
             if (!empty($errors)) {
-                $logger = GeneralUtility::makeInstance(LogManager::class)
-                    ->getLogger(self::class);
-
-                $logger->log(
-                    LogLevel::ERROR,
+                $this->logger->error(
                     'SAML logout error in SlsSamlMiddleware',
                     [
                         'context' => $this->context,

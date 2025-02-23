@@ -68,9 +68,6 @@ class SamlAuthService extends AbstractAuthenticationService
         /** @var SettingsService $settingsService */
         $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
         $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
-        static::getLogger()->debug(
-            'SAML authentification: constructed'
-        );
     }
 
     /**
@@ -82,12 +79,12 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     public function authUser(array $user): int
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
         if (!$this->inCharge()) {
-            static::getLogger()->debug(
+            $this->logger->debug(
                 'SAML authentification: not in charge.'
             );
             return self::FAIL_CONTINUE;
@@ -112,7 +109,7 @@ class SamlAuthService extends AbstractAuthenticationService
             );
             $errorMessage = $loginType . ": Login-attempt from {REMOTE_ADDR} ({REMOTE_HOST}), username '{uname}}',"
                 . ' SSO authentication failed (ext:md_saml)!';
-            static::getLogger()->info(
+            $this->logger->info(
                 $errorMessage,
                 [
                     'REMOTE_ADDR' => $this->authInfo['REMOTE_ADDR'],
@@ -133,7 +130,7 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     protected function inCharge(): bool
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
@@ -206,12 +203,12 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     public function getUser()
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
         if (!$this->inCharge()) {
-            static::getLogger()->debug(
+            $this->logger->debug(
                 'SAML authentification: not in charge.'
             );
             return false;
@@ -251,7 +248,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
                 $errorMessage = $loginType . ': Login-attempt from {REMOTE_ADDR} ({REMOTE_HOST}) failed (ext:md_saml). '
                     . 'SAML error: {errors}:' . chr(10) . '{errorDetails}';
-                static::getLogger()->error(
+                $this->logger->error(
                     $errorMessage,
                     [
                         'REMOTE_ADDR' => $this->authInfo['REMOTE_ADDR'],
@@ -265,7 +262,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     echo '<h1>SAML error</h1>';
                     echo '<p>' . implode(', ', $errors) . '</p>';
                     echo '<p>' . htmlentities((string) $auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
-                    static::getLogger()->debug(
+                    $this->logger->debug(
                         'SAML authentification: ' . __METHOD__ . ' EXIT in line ' . __LINE__
                     );
                     exit;
@@ -292,7 +289,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     isset($extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
                     (int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1
                 ) {
-                    static::getLogger()->debug(
+                    $this->logger->debug(
                         "Record for user '{username}' found and will be updated.",
                         [
                             'username' => $user['username'],
@@ -301,7 +298,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     return $this->updateUser($record, $user);
                 }
 
-                static::getLogger()->debug(
+                $this->logger->debug(
                     "Record for user '{username}'  found. Will *not* be updated due to configuration.",
                     [
                         'username' => $user['username'],
@@ -312,7 +309,7 @@ class SamlAuthService extends AbstractAuthenticationService
             }
 
             if ((int)$extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === 1) {
-                static::getLogger()->debug(
+                $this->logger->debug(
                     "*No* record for user  '{username}'  found, but will be created.",
                     [
                         'username' => $user['username'],
@@ -321,7 +318,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 return $this->createUser($user);
             }
 
-            static::getLogger()->debug(
+            $this->logger->debug(
                 "Record for user  '{username}'  not found. Will *not* be created due to configuration.",
                 [
                     'username' => $user['username'],
@@ -330,12 +327,12 @@ class SamlAuthService extends AbstractAuthenticationService
         } else {
             $auth = new Auth($extSettings['saml']);
             $auth->login();
-            static::getLogger()->debug(
+            $this->logger->debug(
                 'SAML authentification has been processed.'
             );
         }
 
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification could not authenticate this user.'
         );
         return false;
@@ -350,7 +347,7 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     protected function getUserArrayForDb(array $samlAttributes, array $extSettings): array
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
@@ -387,7 +384,7 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     private function updateUser(array $localUser, array $userData)
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
@@ -441,7 +438,7 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     protected function createUser(array $userData)
     {
-        static::getLogger()->debug(
+        $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
@@ -483,21 +480,5 @@ class SamlAuthService extends AbstractAuthenticationService
         }
 
         return false;
-    }
-
-    /**
-     * Returns a logger.
-     *
-     * @return LoggerInterface
-     */
-    protected static function getLogger(): LoggerInterface
-    {
-        /** @var Logger $logger */
-        static $logger = null;
-        if (!$logger instanceof Logger) {
-            $logger = GeneralUtility::makeInstance(LogManager::class)->getLogger(self::class);
-        }
-
-        return $logger;
     }
 }
