@@ -17,14 +17,11 @@ use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
 use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
-use TYPO3\CMS\Core\TypoScript\TemplateService;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\RootlineUtility;
-use TYPO3\CMS\Extbase\Configuration\ConfigurationManager;
-use TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface;
 
 /**
  * Class SettingsService
@@ -77,25 +74,11 @@ class SettingsService implements SingletonInterface
             new BeforeSettingsAreProcessedEvent($loginType, $this->extSettings)
         )->getSettings();
 
-        if ($this->extSettings === []) {
-            // Backend mode, no TSFE loaded
-            if (!isset($GLOBALS['TSFE'])) {
-                $typoScriptSetup = $this->getTypoScriptSetup($this->getRootPageId());
-                $this->extSettings = $typoScriptSetup['plugin']['tx_mdsaml']['settings'] ?? [];
-            } else {
-                /** @var ConfigurationManager $configurationManager */
-                $configurationManager = GeneralUtility::makeInstance(ConfigurationManager::class);
-                $this->extSettings = $configurationManager->getConfiguration(
-                    ConfigurationManagerInterface::CONFIGURATION_TYPE_SETTINGS,
-                    'Mdsaml',
-                    ''
-                );
-            }
+        $this->extSettings = $this->getSamlConfig($this->getRootPageId());
 
-            if (!$this->extSettings) {
-                $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
-                return [];
-            }
+        if (!$this->extSettings) {
+            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+            return [];
         }
 
         // Merge settings according to given context (frontend or backend)
@@ -107,33 +90,24 @@ class SettingsService implements SingletonInterface
         $this->extSettings['saml']['sp']['assertionConsumerService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['assertionConsumerService']['url'];
         $this->extSettings['saml']['sp']['singleLogoutService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['singleLogoutService']['url'];
 
-        $this->extSettings = $this->convertBooleans($this->extSettings);
-
         return $this->eventDispatcher->dispatch(
             new AfterSettingsAreProcessedEvent($loginType, $this->extSettings)
         )->getSettings();
     }
 
     /**
-     * Get TypoScript setup
+     * Get SAML configuration
      *
      * @param int $pageId
      * @return array
+     * @throws SiteNotFoundException
      */
-    private function getTypoScriptSetup(int $pageId): array
+    private function getSamlConfig(int $pageId): array
     {
-        $template = GeneralUtility::makeInstance(TemplateService::class);
-        $template->tt_track = false;
-        $rootline = GeneralUtility::makeInstance(
-            RootlineUtility::class,
-            $pageId
-        )->get();
-        $template->runThroughTemplates($rootline, 0);
-        $template->generateConfig();
+        $siteFinder = GeneralUtility::makeInstance(SiteFinder:: class);
+        $site = $siteFinder->getSiteByPageId($pageId);
 
-        $typoScriptSetup = $template->setup;
-
-        return GeneralUtility::removeDotsFromTS($typoScriptSetup);
+        return $site->getConfiguration()['settings']['md_saml']?? [];
     }
 
     /**
@@ -161,28 +135,6 @@ class SettingsService implements SingletonInterface
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
-    }
-
-    /**
-     * Convert booleans to real booleans
-     *
-     * @param array $settings
-     * @return array
-     */
-    private function convertBooleans(array $settings): array
-    {
-        array_walk_recursive(
-            $settings,
-            static function (&$value): void {
-                if ($value === 'true') {
-                    $value = true;
-                } elseif ($value === 'false') {
-                    $value = false;
-                }
-            }
-        );
-
-        return $settings;
     }
 
     public function isFrontendLoginActive(): bool
