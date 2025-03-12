@@ -52,8 +52,11 @@ class SettingsService implements SingletonInterface
     public function useFrontendAssertionConsumerServiceAuto(string $path): bool
     {
         $extSettings = $this->getSettings('fe');
-        $auto = filter_var($extSettings['fe_users']['saml']['sp']['assertionConsumerService']['auto'] ?? false, FILTER_VALIDATE_BOOLEAN);
-        if ($auto && $this->isFrontendLoginActive()) {
+
+        if (
+            $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['auto']
+            && $extSettings['fe_users']['active']
+        ) {
             $assertionConsumerServiceUrl = $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['url'] ?? '/';
             return $path === $assertionConsumerServiceUrl && $_POST['SAMLResponse'];
         }
@@ -77,7 +80,7 @@ class SettingsService implements SingletonInterface
         $this->extSettings = $this->getSamlConfig($this->getRootPageId());
 
         if (!$this->extSettings) {
-            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return [];
         }
 
@@ -135,11 +138,5 @@ class SettingsService implements SingletonInterface
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
-    }
-
-    public function isFrontendLoginActive(): bool
-    {
-        $extSettings = $this->getSettings('fe');
-        return filter_var($extSettings['fe_users']['active'] ?? false, FILTER_VALIDATE_BOOLEAN);
     }
 }

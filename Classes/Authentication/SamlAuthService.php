@@ -20,7 +20,6 @@ use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
 use OneLogin\Saml2\ValidationError;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\InvalidPasswordHashException;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
@@ -33,8 +32,6 @@ use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
-use TYPO3\CMS\Core\Log\Logger;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
@@ -287,7 +284,7 @@ class SamlAuthService extends AbstractAuthenticationService
             if (is_array($record)) {
                 if (
                     isset($extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
-                    (int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1
+                    $extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === true
                 ) {
                     $this->logger->debug(
                         "Record for user '{username}' found and will be updated.",
@@ -308,7 +305,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 return $record;
             }
 
-            if ((int)$extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === 1) {
+            if ($extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
                 $this->logger->debug(
                     "*No* record for user  '{username}'  found, but will be created.",
                     [

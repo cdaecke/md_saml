@@ -18,10 +18,10 @@ settings:
             url: '/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs'
 
       # Decide whether a new backend user should be created
-      createIfNotExist: 1
+      createIfNotExist: true
 
       # Decide whether to update a existing backend user with new data
-      updateIfExist: 1
+      updateIfExist: true
 
       transformationArr:
         username: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname'
@@ -36,7 +36,7 @@ settings:
 
     # Frontend users
     fe_users:
-      active: 1
+      active: true
 
       # Identifier of the SP entity  (must be a URI)
       saml:
@@ -50,13 +50,13 @@ settings:
             url: ''
 
             # if enable login is detected from url above, "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" not needed)
-            auto: 0
+            auto: false
 
       # Decide whether a new frontend user should be created
-      createIfNotExist: 1
+      createIfNotExist: true
 
       # Decide whether to update a existing frontend user with new data
-      updateIfExist: 1
+      updateIfExist: true
 
       # Configuration of the returning parameters of the SSO.
       # This array will be merged with `beUser.databaseDefaults`.
