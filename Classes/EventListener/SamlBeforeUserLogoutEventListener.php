@@ -14,15 +14,13 @@ final class SamlBeforeUserLogoutEventListener
     {
         $userAuthentication = $event->getUser();
 
-        if ($userAuthentication->userSession->getUserId() > 0) {
-            if ($userAuthentication->userSession->isAnonymous()) {
+        if ($userAuthentication->getUserId() > 0) {
+            if ($userAuthentication->getSession()->isAnonymous()) {
                 return;
             }
 
             // Fetch the user from the DB
-            $userRecord = $userAuthentication->getRawUserByUid(
-                $userAuthentication->userSession->getUserId() ?? 0
-            );
+            $userRecord = $userAuthentication->getRawUserByUid($userAuthentication->getUserId() ?? 0);
 
             if ($userRecord['md_saml_source'] ?? false) {
                 // we are responsible
