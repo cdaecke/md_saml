@@ -131,10 +131,6 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
-            return true;
-        }
-
         return ($_REQUEST['login-provider'] ?? '') === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
@@ -147,16 +143,17 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param string $table
      * @return QueryRestrictionContainerInterface
      */
-    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface {
-            $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
-            $restrictionContainer->add(
-                GeneralUtility::makeInstance(
-                    PageIdListRestriction::class,
-                    [$table],
-                    [$pid]
-                )
-            );
-            return $restrictionContainer;
+    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface
+    {
+        $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
+        $restrictionContainer->add(
+            GeneralUtility::makeInstance(
+                PageIdListRestriction::class,
+                [$table],
+                [$pid]
+            )
+        );
+        return $restrictionContainer;
     }
 
     /**
@@ -215,14 +212,11 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $extSettings = $this->settingsService->getSettings($loginType);
         if (!$extSettings) {
-            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return false;
         }
 
-        if (
-            isset($_REQUEST['acs'])
-            || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
-        ) {
+        if (isset($_REQUEST['acs'])) {
             $auth = new Auth($extSettings['saml']);
             $auth->processResponse();
 
@@ -352,8 +346,8 @@ class SamlAuthService extends AbstractAuthenticationService
         $userArr['md_saml_source'] = 1;
         $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
-        // Add default values from TypoScript settings to user array
-        foreach ($extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] as $key => $val) {
+        // Add default values from site settings to user array
+        foreach ($extSettings[$this->authInfo['db_user']['table']]['databaseDefaults']?? [] as $key => $val) {
             $key = trim((string) $key);
             $val = trim((string) $val);
 

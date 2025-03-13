@@ -7,13 +7,6 @@ use Mediadreams\MdSaml\Middleware\SlsFrontendSamlMiddleware;
 
 return [
     'frontend' => [
-        'mdsaml/saml-data' => [
-            'target' => AcsSamlMiddleware::class,
-            'before' => [
-                'typo3/cms-frontend/authentication',
-            ],
-        ],
-
         'mdsaml/saml-slo' => [
             'target' => SlsFrontendSamlMiddleware::class,
             'before' => [

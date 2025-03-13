@@ -8,6 +8,7 @@ settings:
 
     # SAML-Metadata should be public available without Typo3-BE-Login
     publicMetadata: false
+
     be_users:
       saml:
         sp:

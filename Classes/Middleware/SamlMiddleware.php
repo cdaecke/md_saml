@@ -35,8 +35,8 @@ class SamlMiddleware implements MiddlewareInterface
      * @param SettingsService $settingsService
      */
     public function __construct(
-        private readonly ResponseFactoryInterface $responseFactory, 
-        protected SettingsService $settingsService, 
+        private readonly ResponseFactoryInterface $responseFactory,
+        protected SettingsService $settingsService,
         private readonly LoggerInterface $logger
     ){}
 
@@ -67,8 +67,8 @@ class SamlMiddleware implements MiddlewareInterface
 
         $extSettings = $this->settingsService->getSettings($loginType);
         if (!$extSettings) {
-            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
-            return [];
+            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
+            return $handler->handle($request);
         }
 
         if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {

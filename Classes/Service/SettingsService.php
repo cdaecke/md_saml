@@ -49,21 +49,6 @@ class SettingsService implements SingletonInterface
         $this->inCharge = $inCharge;
     }
 
-    public function useFrontendAssertionConsumerServiceAuto(string $path): bool
-    {
-        $extSettings = $this->getSettings('fe');
-
-        if (
-            $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['auto']
-            && $extSettings['fe_users']['active']
-        ) {
-            $assertionConsumerServiceUrl = $extSettings['fe_users']['saml']['sp']['assertionConsumerService']['url'] ?? '/';
-            return $path === $assertionConsumerServiceUrl && $_POST['SAMLResponse'];
-        }
-
-        return false;
-    }
-
     /**
      * Return settings
      *
