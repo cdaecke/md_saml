@@ -17,7 +17,10 @@ final class SamlAfterUserLoggedOutEventListener
      */
     public function __invoke(AfterUserLoggedOutEvent $event): void
     {
-        // SSO Logout
+    	// if the logout was triggered externally by SAML, we don't need to perform a SSO logout
+        if (GeneralUtility::_GP('sls') !== null) return;
+        
+        // SSO Logout if logout was triggered by user
         $settingsService = GeneralUtility::makeInstance(SettingsService::class);
         if ($settingsService->getInCharge()) {
             $extSettings = $settingsService->getSettings($event->getUser()->loginType);
