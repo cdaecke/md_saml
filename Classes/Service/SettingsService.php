@@ -17,7 +17,6 @@ use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
 use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
-use TYPO3\CMS\Core\Exception\SiteNotFoundException;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
@@ -28,26 +27,10 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  */
 class SettingsService implements SingletonInterface
 {
-    protected bool $inCharge = false;
-
-    protected array $extSettings = [];
-
-    protected EventDispatcherInterface $eventDispatcher;
-
-    public function __construct(private readonly LoggerInterface $logger)
-    {
-        $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
-    }
-
-    public function getInCharge(): bool
-    {
-        return $this->inCharge;
-    }
-
-    public function setInCharge(bool $inCharge): void
-    {
-        $this->inCharge = $inCharge;
-    }
+    public function __construct(
+        private readonly LoggerInterface $logger,
+        protected EventDispatcherInterface $eventDispatcher
+    ) {}
 
     /**
      * Return settings
@@ -58,66 +41,53 @@ class SettingsService implements SingletonInterface
      */
     public function getSettings(string $loginType): array
     {
-        $this->extSettings = $this->eventDispatcher->dispatch(
-            new BeforeSettingsAreProcessedEvent($loginType, $this->extSettings)
+        $extSettings = [];
+
+        $extSettings = $this->eventDispatcher->dispatch(
+            new BeforeSettingsAreProcessedEvent($loginType, $extSettings)
         )->getSettings();
 
-        $this->extSettings = $this->getSamlConfig($this->getRootPageId());
+        if ($extSettings === []) {
+            $extSettings = $this->getSamlConfig();
+        }
 
-        if (!$this->extSettings) {
+        if (!$extSettings) {
             $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return [];
         }
 
         // Merge settings according to given context (frontend or backend)
-        $this->extSettings['saml'] = array_replace_recursive($this->extSettings['saml'], $this->extSettings[mb_strtolower($loginType) . '_users']['saml']);
+        $extSettings['saml'] = array_replace_recursive($extSettings['saml'], $extSettings[mb_strtolower($loginType) . '_users']['saml']);
 
         // Add base url
-        $this->extSettings['saml']['baseurl'] = $this->extSettings['mdsamlSpBaseUrl'];
-        $this->extSettings['saml']['sp']['entityId'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['entityId'];
-        $this->extSettings['saml']['sp']['assertionConsumerService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['assertionConsumerService']['url'];
-        $this->extSettings['saml']['sp']['singleLogoutService']['url'] = $this->extSettings['saml']['baseurl'] . $this->extSettings['saml']['sp']['singleLogoutService']['url'];
+        $extSettings['saml']['baseurl'] = $extSettings['mdsamlSpBaseUrl'];
+        $extSettings['saml']['sp']['entityId'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['entityId'];
+        $extSettings['saml']['sp']['assertionConsumerService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['assertionConsumerService']['url'];
+        $extSettings['saml']['sp']['singleLogoutService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['singleLogoutService']['url'];
 
         return $this->eventDispatcher->dispatch(
-            new AfterSettingsAreProcessedEvent($loginType, $this->extSettings)
+            new AfterSettingsAreProcessedEvent($loginType, $extSettings)
         )->getSettings();
     }
 
     /**
      * Get SAML configuration
      *
-     * @param int $pageId
      * @return array
-     * @throws SiteNotFoundException
      */
-    private function getSamlConfig(int $pageId): array
-    {
-        $siteFinder = GeneralUtility::makeInstance(SiteFinder:: class);
-        $site = $siteFinder->getSiteByPageId($pageId);
-
-        return $site->getConfiguration()['settings']['md_saml']?? [];
-    }
-
-    /**
-     * Get root page ID according to calling url
-     *
-     * @return int|null
-     * @throws \RuntimeException
-     */
-    private function getRootPageId(): ?int
+    private function getSamlConfig(): array
     {
         $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY');
 
         /** @var Site $site */
         foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
             if ($site->getBase()->getHost() === $siteUrl) {
-                return $site->getRootPageId();
+                return $site->getConfiguration()['settings']['md_saml']?? [];
             }
 
-            /** @var SiteLanguage $language */
             foreach ($site->getLanguages() as $language) {
                 if ($language->getBase()->getHost() == $siteUrl) {
-                    return $site->getRootPageId();
+                    return $site->getConfiguration()['settings']['md_saml']?? [];
                 }
             }
         }

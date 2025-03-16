@@ -1,7 +1,7 @@
 # ============================= #
 # Configuration for EXT:felogin #
 # ============================= #
-[{$plugin.tx_mdsaml.settings.fe_users.active} == 1]
+[site("configuration")["settings"]["md_saml"]["fe_users"]["active"] == 1]
 
   plugin.tx_felogin_login {
     view {
