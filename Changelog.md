@@ -1,3 +1,12 @@
+# Version 3.0.7 (2025-03-17)
+- [FEATURE] Add IdP-initiated logout with proper redirects. Big thanks [Jonas Wolf](https://github.com/jwtue)
+- [TASK] Use contructor injection for Logger. Big thanks [Sybille](https://github.com/sypets)
+- [TASK] Update rector, apply rector rules. Big thanks [Sybille](https://github.com/sypets)
+- [TASK] Non-breaking empty configuration. Only continue if settings is initialized, log ERROR if not. Big thanks [Sybille](https://github.com/sypets)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.6...3.0.7
+
 # Version 3.0.6 (2025-02-18)
 - [TASK] activate SSO for backend
 - [TASK] Update SamlAuthService.php. Big thanks [AlexKvrlp](https://github.com/AlexKvrlp)

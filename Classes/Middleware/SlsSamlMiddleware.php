@@ -26,7 +26,7 @@ use Psr\Log\LoggerInterface;
  * Class SlsSamlMiddleware
  * Do not call directly, but extend this class and set the `$context`!
  */
-class SlsSamlMiddleware implements MiddlewareInterface
+abstract class SlsSamlMiddleware implements MiddlewareInterface
 {
 
     protected string $context = '';
@@ -58,7 +58,7 @@ class SlsSamlMiddleware implements MiddlewareInterface
         ) {
             $extSettings = $this->settingsService->getSettings($this->context);
             $auth = new Auth($extSettings['saml'], true);
-            $auth->processSLO();
+            $auth->processSLO(cbDeleteSession: fn() => $this->performLogoff($request));
             $errors = $auth->getErrors();
 
             if (!empty($errors)) {
@@ -75,4 +75,6 @@ class SlsSamlMiddleware implements MiddlewareInterface
 
         return $handler->handle($request);
     }
+
+    abstract protected function performLogoff(ServerRequestInterface $request);
 }

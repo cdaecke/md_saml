@@ -36,4 +36,10 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         $this->context = 'BE';
         return parent::process($request, $handler);
     }
+    
+    protected function performLogoff(ServerRequestInterface $request) {
+        if (isset($GLOBALS['BE_USER']->user)) {
+            $GLOBALS['BE_USER']->logoff();
+        }
+    }
 }

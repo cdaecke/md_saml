@@ -9,8 +9,8 @@ return [
     'frontend' => [
         'mdsaml/saml-slo' => [
             'target' => SlsFrontendSamlMiddleware::class,
-            'before' => [
-                'typo3/cms-frontend/backend-user-authentication',
+            'after' => [
+                'typo3/cms-frontend/authentication',
             ],
         ],
     ],
@@ -25,8 +25,8 @@ return [
 
         'mdsaml/saml-slo' => [
             'target' => SlsBackendSamlMiddleware::class,
-            'before' => [
-                'typo3/cms-backend/https-redirector',
+            'after' => [
+                'typo3/cms-backend/authentication',
             ],
         ],
     ],
