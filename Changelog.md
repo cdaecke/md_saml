@@ -1,3 +1,62 @@
+# Version 4.0.0 (2025-??-??)
+
+## Migration from v3 to v4
+- Activation of backend login is done in the extension configuration, which can be found 
+in the TYPO3 backend in `Settings -> Extension Configuration -> md_saml`. Please set 
+checkbox according to your needs!
+- Remove the Typoscript constants of `ext:md_saml` from your configuration.
+- Include the Site Set `MdSaml base configuration (ext:md_saml)` in the Site Configuration
+  of your website.
+- Add custom Site Set in your site package as shown below:
+
+The following example shows, how to modify the default configuration of `ext:md_saml`:
+
+EXT:my_extension/Configuration/Sets/MySet/config.yaml:
+
+    name: my_extension/md_saml
+    label: MdSaml config for my website
+    dependencies:
+      - mediadreams/md_saml
+
+EXT:my_extension/Configuration/Sets/MySet/settings.yaml:
+
+    md_saml:
+      mdsamlSpBaseUrl: 'https://%env(BASE_DOMAIN)%'
+
+      be_users:
+        databaseDefaults:
+          usergroup: 3
+          lang: 'de'
+
+      fe_users:
+        saml:
+          sp:
+            entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
+            assertionConsumerService:
+              url: '/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
+
+      saml:
+        sp:
+          x509cert: '%env(SAML_SP_X509CERT)%'
+          privateKey: '%env(SAML_SP_PRIVATE_KEY)%'
+
+        idp:
+          entityId: 'https://auth.myprovider.de/adfs/services/trust'
+          singleSignOnService:
+            url: 'https://auth.myprovider.de/adfs/ls/'
+
+          singleLogoutService:
+            url: 'https://auth.myprovider.de/adfs/ls/'
+
+          x509cert: '%env(SAML_IDP_X509CERT)%'
+
+As you can see, you can use environment variables in your configuration in order
+to configure different setups.
+
+General information on site sets can be found
+[here](https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/SiteHandling/SiteSets.html).
+
+
 # Version 3.0.7 (2025-03-17)
 - [FEATURE] Add IdP-initiated logout with proper redirects. Big thanks [Jonas Wolf](https://github.com/jwtue)
 - [TASK] Use contructor injection for Logger. Big thanks [Sybille](https://github.com/sypets)
