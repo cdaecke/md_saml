@@ -36,9 +36,10 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
      *
      * @param SettingsService $settingsService
      */
-    public function __construct(protected SettingsService $settingsService, protected readonly LoggerInterface $logger)
-    {
-    }
+    public function __construct(
+        protected SettingsService $settingsService,
+        protected readonly LoggerInterface $logger
+    ) {}
 
     /**
      * Process request

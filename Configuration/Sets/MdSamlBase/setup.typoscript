@@ -1,0 +1,7 @@
+# Attention
+# If the website uses a mixed setup consisting of a TypoScript template (sys_template) and site sets,
+# it is important to uncheck the "Clear" flag for constants and setup in the TypoScript template.
+# If the "Clear" flag is checked (default), TypoScript settings from site sets are cleared and
+# do therefore not apply.
+
+@import 'EXT:md_saml/Configuration/TypoScript/setup.typoscript'

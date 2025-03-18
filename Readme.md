@@ -12,7 +12,7 @@ Frontend login:
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
-- TYPO3 v12.4
+- TYPO3 v13.4
 
 ## Installation
 - Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
@@ -20,50 +20,105 @@ Frontend login:
 - Configure the extension by setting your own constants
 
 ## Configuration
-### TypoScript
+### Site Set
+
+The Service Provider (SP) and Identity Provider (IdP) can be configured by adding the settings in the Site Set
+`MdSaml base configuration (ext:md_saml)`, which is shipped with this extension.
+
+Include the Site Set `MdSaml base configuration (ext:md_saml)` in the Site Configuration
+of your website.
+
+Now modify the settings according to your needs. In order to get your custom
+configuration in place, add a Site Set in your site package as shown below:
+
+The following example shows, how to modify the default configuration of ext:md_saml:
+
+EXT:my_extension/Configuration/Sets/MdSamlOverrides/config.yaml:
+
+    name: my_extension/md_saml
+    label: MdSaml config for my website
+    dependencies:
+      - mediadreams/md_saml
+
+EXT:my_extension/Configuration/Sets/MdSamlOverrides/settings.yaml:
+
+    md_saml:
+      mdsamlSpBaseUrl: 'https://%env(BASE_DOMAIN)%'
+
+      be_users:
+        databaseDefaults:
+          usergroup: 3
+          lang: 'de'
+
+      fe_users:
+        saml:
+          sp:
+            entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
+            assertionConsumerService:
+              url: '/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
+
+      saml:
+        sp:
+          x509cert: '%env(SAML_SP_X509CERT)%'
+          privateKey: '%env(SAML_SP_PRIVATE_KEY)%'
+
+        idp:
+          entityId: 'https://auth.myprovider.de/adfs/services/trust'
+          singleSignOnService:
+            url: 'https://auth.myprovider.de/adfs/ls/'
+
+          singleLogoutService:
+            url: 'https://auth.myprovider.de/adfs/ls/'
+
+          x509cert: '%env(SAML_IDP_X509CERT)%'
+
+As you can see, you can use environment variables in your configuration in order
+to configure different setups.
+
+General information on site sets can be found
+[here](https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/SiteHandling/SiteSets.html).
 
 #### SAML
-The Service Provider (SP) and Identity Provider (IdP) can be configured by adapting the settings in TypoScript.
 
-- Copy file `ext:md_saml/Configuration/TypoScript/setup.typoscript` to your
-own extension and modify according your needs.
+- Set a base url in `md_saml.mdsamlSpBaseUrl` for all endpoints
 - Generate a certificate for the Service Provider (SP)<br>
 `openssl req -newkey rsa:3072 -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key`
 - Open certificate files and remove all line breaks. Copy value of  `sp.crt` to
-`plugin.tx_mdsaml.settings.saml.sp.x509cert` and value of `sp.key` to `plugin.tx_mdsaml.settings.saml.sp.privateKey`
+`md_saml.saml.sp.x509cert` and value of `sp.key` to `md_saml.saml.sp.privateKey`
 
 **Backend**
 
-- `plugin.tx_mdsaml.settings.be_users.saml.sp.entityId`<br>
+Activate backend login in the extension configuration. Go to
+`Settings -> Extension Configuration -> md_saml` and check/uncheck the checkbox.
+
+- `md_saml.be_users.saml.sp.entityId`<br>
 Identifier of the backend (TYPO3) SP entity  (must be a URI)<br>
-ATTENTION: `baseurl` will be attached automatically<br>
+ATTENTION: `mdsamlSpBaseUrl` will be attached automatically<br>
 Default: `/typo3/index.php?loginProvider=1648123062&mdsamlmetadata`
-- `plugin.tx_mdsaml.settings.be_users.saml.sp.assertionConsumerService.url`<br>
+- `md_saml.be_users.saml.sp.assertionConsumerService.url`<br>
 Specifies info about where and how the <AuthnResponse> message of a backend (TYPO3) login MUST be returned to the
 requester, in this case our SP.<br>
 Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs`
-- `saml.sp.assertionConsumerService.auto`<br>
-If enabled, login is detected from url above (assertionConsumerService.url), the arguments "?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login" is not needed.
-If there is a login plugin on assertionConsumerService.url page and redirect method ''getpost'' is selected, redirection is done with given RelayState (should be the referrer)
 
 **Frontend**
 
-- Activate frontend login by setting the constant `plugin.tx_mdsaml.settings.fe_users.active = 1`<br>
-This will load a different login template.
-- `plugin.tx_mdsaml.settings.fe_users.saml.sp.entityId`<br>
+Activate frontend login by setting the constant `md_saml.fe_users.active = 1`.
+By default it is enabled and it will load a different login template.
+
+- `md_saml.fe_users.saml.sp.entityId`<br>
 Identifier of the frontend SP entity  (must be a URI)<br>
-ATTENTION: `baseurl` will be attached automatically<br>
+ATTENTION: `mdsamlSpBaseUrl` will be attached automatically<br>
 Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&mdsamlmetadata`
-- `plugin.tx_mdsaml.settings.fe_users.saml.sp.assertionConsumerService.url`<br>
+- `md_saml..fe_users.saml.sp.assertionConsumerService.url`<br>
 Specifies info about where and how the <AuthnResponse> message of a frontend login MUST be returned to the requester,
 in this case our SP.<br>
 Example (just replace the speaking path ("/login/") according to your needs): `/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login`
 
 **Note**
 
-All default settings, which are configured in `plugin.tx_mdsaml.settings.saml` can be overwritten for backend or
-frontend needs with properties in `plugin.tx_mdsaml.settings.be_users.saml...` (backend) and
-`plugin.tx_mdsaml.settings.fe_users.saml...` (frontend).
+All default settings, which are configured in `md_saml.saml` can be overwritten for backend or
+frontend needs with properties in `md_saml.be_users.saml...` (backend) and
+`md_saml.fe_users.saml...` (frontend).
 
 As underlying SAML toolkit the library of OneLogin is used (no account with OneLogin is needed!).
 See full [documentation](https://github.com/onelogin/php-saml) for details on the configuration.
@@ -71,40 +126,40 @@ See full [documentation](https://github.com/onelogin/php-saml) for details on th
 #### Users
 You are able to create new users, if they are not present at the time of login.
  - Backend<br>
- `plugin.tx_mdsaml.settings.be_users.createIfNotExist`...<br>
+ `md_saml.be_users.createIfNotExist`...<br>
  Default = 1, so be_users will be created, if they do not exist.
  - Frontend<br>
- `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`...<br>
+ `md_saml.fe_users.createIfNotExist`...<br>
   Default = 1, so fe_users will be created, if they do not exist.
 
 You are able to update existing users, if they are already present at the time of login.
  - Backend<br>
- `plugin.tx_mdsaml.settings.be_users.updateIfExist`...<br>
+ `md_saml.be_users.updateIfExist`...<br>
  Default = 1, so be_users will be updated, if they exist.
  - Frontend<br>
- `plugin.tx_mdsaml.settings.fe_users.updateIfExist`...<br>
+ `md_saml.fe_users.updateIfExist`...<br>
   Default = 1, so fe_users will be updated, if they exist.
 
 **Backend**
 
-- `plugin.tx_mdsaml.settings.be_users.createIfNotExist`<br>
+- `md_saml.be_users.createIfNotExist`<br>
 Decide whether a new backend user should be created (Default = 1)
-- `plugin.tx_mdsaml.settings.be_users.updateIfExist`<br>
+- `md_saml.be_users.updateIfExist`<br>
 Decide whether a backend user should be updated (Default = 1)
-- `plugin.tx_mdsaml.settings.be_users.databaseDefaults`...<br>
+- `md_saml.be_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created backend user. You can add any fields of the database here.<br>
-Example: `plugin.tx_mdsaml.settings.be_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
+Example: `md_saml.be_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.
 
 **Frontend**
 
-- `plugin.tx_mdsaml.settings.fe_users.createIfNotExist`<br>
+- `md_saml.fe_users.createIfNotExist`<br>
 Decide whether a new frontend user should be created (Default = 1)
-- `plugin.tx_mdsaml.settings.fe_users.updateIfExist`<br>
+- `md_saml.fe_users.updateIfExist`<br>
 Decide whether a frontend user should be updated (Default = 1)
-- `plugin.tx_mdsaml.settings.fe_users.databaseDefaults`...<br>
+- `md_saml.fe_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
-Example: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
-ATTENTION: `plugin.tx_mdsaml.settings.fe_users.databaseDefaults.pid` will be used as storage for newsly created fe_users.
+Example: `md_saml.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
+ATTENTION: `md_saml.fe_users.databaseDefaults.pid` will be used as storage for newsly created fe_users.
 
 #### SSO
 The returned value of the SSO provider can be anything. With the following configuration set the names of the returned
@@ -112,14 +167,14 @@ values to the ones needed in TYPO3:
 
 **Backend**
 
-- `plugin.tx_mdsaml.settings.be_users.transformationArr`<br>
-Example: `plugin.tx_mdsaml.be_users.settings.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
+- `md_saml.be_users.transformationArr`<br>
+Example: `md_saml.be_users.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
 The above example shows the returning value of an ADFS server, which contains the username for TYPO3.
 
 **Frontend**
 
-- `plugin.tx_mdsaml.settings.fe_users.transformationArr`<br>
-Example: `plugin.tx_mdsaml.settings.fe_users.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
+- `md_saml.fe_users.transformationArr`<br>
+Example: `md_saml.fe_users.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
 The above example shows the returning value of an ADFS server, which contains the username for a frontend user.
 
 ### ADFS
@@ -179,14 +234,14 @@ frontend configuration.
 ACHTUNG:<br>Die Reihenfolge der Regeln ist wichtig! Die erste muss die `Name Identifier` Regel sein!
 
 Als letztes muss noch im Reiter `Bezeichner` der `Vertrauensstellung` im Feld `Bezeichner der vertrauenden Seite` der
-Wert, der in `plugin.tx_mdsaml.settings.mdsamlSpBaseUrl` eingegeben werden.
+Wert, der in `md_saml.mdsamlSpBaseUrl` eingegeben werden.
 
 ### TYPO3
 
 #### General
 <ul>
     <li>
-        In `settings.php` or `additional.php` (former `LocalConfiguration.php` or `AdditionalConfiguration.php`) the `['BE']['cookieSameSite']` must be set to `lax`:<br>
+        In `settings.php` or `additional.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
         <pre><code>$GLOBALS['TYPO3_CONF_VARS']['BE']['cookieSameSite'] = 'lax'</code></pre>
     </li>
     <li>
@@ -247,6 +302,13 @@ You must register the event listener in `Services.yaml`
     <dd>
         Make sure, that the domain of your website is configured in the site configuration
         (`sites/identifier/config.yaml`) for `base`.
+    </dd>
+    <dt>The template for the frontend login is not loaded.</dt>
+    <dd>
+        If the website uses a mixed setup consisting of a TypoScript template (sys_template)
+        and site sets, it is important to uncheck the "Clear" flag for constants and setup in the
+        TypoScript template. If the "Clear" flag is checked (default), TypoScript settings
+        from site sets are cleared and do therefore not apply.
     </dd>
 </dl>
 
