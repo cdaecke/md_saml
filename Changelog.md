@@ -1,4 +1,6 @@
-# Version 4.0.0 (2025-??-??)
+# Version 4.0.0 (2025-04-04)
+
+- [FEATURE] TYPO3 v13 compatibility
 
 ## Migration from v3 to v4
 - Activation of backend login is done in the extension configuration, which can be found 
@@ -53,9 +55,18 @@ EXT:my_extension/Configuration/Sets/MySet/settings.yaml:
 As you can see, you can use environment variables in your configuration in order
 to configure different setups.
 
+ATTENTION
+Somehow, it is not possible to use environment variables in site sets at the moment. So if you want to use env vars, do it in the general site configuration in `<project-root>/config/sites/<identifier>/config.yaml`. Add following at the bottom of the config file:
+
+    settings:
+      md_saml:
+        mdsamlSpBaseUrl: '%env(SAML_BASE_DOMAIN)%'
+
 General information on site sets can be found
 [here](https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/SiteHandling/SiteSets.html).
 
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.7...4.0.0
 
 # Version 3.0.7 (2025-03-17)
 - [FEATURE] Add IdP-initiated logout with proper redirects. Big thanks [Jonas Wolf](https://github.com/jwtue)
