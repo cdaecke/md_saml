@@ -1,0 +1,2 @@
+# cat=Login/enable/010; type=boolean; label=Activate ADFS Login for backend
+activateBackendLogin = 1

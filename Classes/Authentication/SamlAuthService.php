@@ -20,8 +20,9 @@ use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
 use OneLogin\Saml2\ValidationError;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
+use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\InvalidPasswordHashException;
 use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Database\Connection;
@@ -33,8 +34,6 @@ use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Http\RedirectResponse;
-use TYPO3\CMS\Core\Log\Logger;
-use TYPO3\CMS\Core\Log\LogManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class SamlAuthService extends AbstractAuthenticationService
@@ -59,6 +58,20 @@ class SamlAuthService extends AbstractAuthenticationService
      */
     public const FAIL_BREAK = 0;
 
+    /**
+     * An array with all configured settings
+     *
+     * @var array
+     */
+    protected array $extSettings = [];
+
+    /**
+     * This holds the information, whether the auth service for BE or FE is active
+     *
+     * @var bool
+     */
+    protected bool $useAuthService = false;
+
     protected SettingsService $settingsService;
 
     private readonly EventDispatcherInterface $eventDispatcher;
@@ -68,6 +81,35 @@ class SamlAuthService extends AbstractAuthenticationService
         /** @var SettingsService $settingsService */
         $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
         $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
+    }
+
+    /**
+     * Initialize authentication service
+     *
+     * @param string $mode Subtype of the service which is used to call the service.
+     * @param array $loginData Submitted login form data
+     * @param array $authInfo Information array. Holds submitted form data etc.
+     * @param AbstractUserAuthentication $pObj Parent object
+     */
+    public function initAuth($mode, $loginData, $authInfo, $pObj)
+    {
+        parent::initAuth($mode, $loginData, $authInfo, $pObj);
+
+        $loginType = $this->pObj->loginType;
+        $this->extSettings = $this->settingsService->getSettings($loginType);
+
+        if ($loginType == 'BE') {
+            $backendConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)
+                ->get('md_saml');
+
+            if (($backendConfiguration['activateBackendLogin'] ?? 0) == 1) {
+                $this->useAuthService = $this->inCharge();
+            }
+        } else {
+            if (($this->extSettings['fe_users']['active'] ?? false) === true) {
+                $this->useAuthService = $this->inCharge();
+            }
+        }
     }
 
     /**
@@ -83,7 +125,7 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        if (!$this->inCharge()) {
+        if (!$this->useAuthService) {
             $this->logger->debug(
                 'SAML authentification: not in charge.'
             );
@@ -134,10 +176,6 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        if ($this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])) {
-            return true;
-        }
-
         return ($_REQUEST['login-provider'] ?? '') === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
@@ -150,16 +188,17 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param string $table
      * @return QueryRestrictionContainerInterface
      */
-    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface {
-            $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
-            $restrictionContainer->add(
-                GeneralUtility::makeInstance(
-                    PageIdListRestriction::class,
-                    [$table],
-                    [$pid]
-                )
-            );
-            return $restrictionContainer;
+    protected function getDatabasePidRestriction(int $pid, string $table): QueryRestrictionContainerInterface
+    {
+        $restrictionContainer = GeneralUtility::makeInstance(DefaultRestrictionContainer::class);
+        $restrictionContainer->add(
+            GeneralUtility::makeInstance(
+                PageIdListRestriction::class,
+                [$table],
+                [$pid]
+            )
+        );
+        return $restrictionContainer;
     }
 
     /**
@@ -176,10 +215,8 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $loginType = $this->pObj->loginType;
 
-        $extSettings = $this->settingsService->getSettings($loginType);
-
-        if ($loginType === 'FE' && isset($extSettings['fe_users']['databaseDefaults']['pid'])) {
-            $pid = (int)$extSettings['fe_users']['databaseDefaults']['pid'];
+        if ($loginType === 'FE' && isset($this->extSettings['fe_users']['databaseDefaults']['pid'])) {
+            $pid = $this->extSettings['fe_users']['databaseDefaults']['pid'];
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
             $expressionBuilder = $queryBuilder->expr();
             $dbUser['enable_clause'] = (string) $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
@@ -207,7 +244,7 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        if (!$this->inCharge()) {
+        if (!$this->useAuthService) {
             $this->logger->debug(
                 'SAML authentification: not in charge.'
             );
@@ -216,17 +253,13 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $loginType = $this->pObj->loginType;
 
-        $extSettings = $this->settingsService->getSettings($loginType);
-        if (!$extSettings) {
-            $this->logger->error('No TypoScript plugin.tx_mdsaml.settings configured. Perhaps you did not include the md_saml static include.');
+        if (!$this->extSettings) {
+            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return false;
         }
 
-        if (
-            isset($_REQUEST['acs'])
-            || $this->settingsService->useFrontendAssertionConsumerServiceAuto($_SERVER['REQUEST_URI'])
-        ) {
-            $auth = new Auth($extSettings['saml']);
+        if (isset($_REQUEST['acs'])) {
+            $auth = new Auth($this->extSettings['saml']);
             $auth->processResponse();
 
             $errors = $auth->getErrors();
@@ -282,12 +315,12 @@ class SamlAuthService extends AbstractAuthenticationService
             }
 
             $samlAttributes = $auth->getAttributes();
-            $user = $this->getUserArrayForDb($samlAttributes, $extSettings);
+            $user = $this->getUserArrayForDb($samlAttributes);
             $record = $this->fetchUserRecord($user['username']);
             if (is_array($record)) {
                 if (
-                    isset($extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
-                    (int)$extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === 1
+                    isset($this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
+                    $this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === true
                 ) {
                     $this->logger->debug(
                         "Record for user '{username}' found and will be updated.",
@@ -308,7 +341,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 return $record;
             }
 
-            if ((int)$extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === 1) {
+            if ($this->extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
                 $this->logger->debug(
                     "*No* record for user  '{username}'  found, but will be created.",
                     [
@@ -325,7 +358,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 ]
             );
         } else {
-            $auth = new Auth($extSettings['saml']);
+            $auth = new Auth($this->extSettings['saml']);
             $auth->login();
             $this->logger->debug(
                 'SAML authentification has been processed.'
@@ -342,21 +375,19 @@ class SamlAuthService extends AbstractAuthenticationService
      * Get user data as array for database
      *
      * @param array $samlAttributes
-     * @param array $extSettings
      * @return array
      */
-    protected function getUserArrayForDb(array $samlAttributes, array $extSettings): array
+    protected function getUserArrayForDb(array $samlAttributes): array
     {
         $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
         $userArr = [];
-        $userArr['md_saml_source'] = 1;
-        $transformationArr = array_flip($extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
+        $transformationArr = array_flip($this->extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
-        // Add default values from TypoScript settings to user array
-        foreach ($extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] as $key => $val) {
+        // Add default values from site settings to user array
+        foreach ($this->extSettings[$this->authInfo['db_user']['table']]['databaseDefaults']?? [] as $key => $val) {
             $key = trim((string) $key);
             $val = trim((string) $val);
 
