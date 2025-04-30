@@ -17,6 +17,7 @@ use Mediadreams\MdSaml\Event\AfterSettingsAreProcessedEvent;
 use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\ExpressionLanguage\Resolver;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
 use TYPO3\CMS\Core\Site\SiteFinder;
