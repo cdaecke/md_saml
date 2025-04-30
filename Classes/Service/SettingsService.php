@@ -82,16 +82,56 @@ class SettingsService implements SingletonInterface
         /** @var Site $site */
         foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
             if ($site->getBase()->getHost() === $siteUrl) {
-                return $site->getConfiguration()['settings']['md_saml']?? [];
+                $settings = $site->getConfiguration()['settings']['md_saml']?? [];
+                return $this->getConfigurationWithBaseVariants(
+                    $settings,
+                    $site->getConfiguration()['settings']['baseVariants']?? []
+                );
             }
 
             foreach ($site->getLanguages() as $language) {
                 if ($language->getBase()->getHost() == $siteUrl) {
-                    return $site->getConfiguration()['settings']['md_saml']?? [];
+                    $settings = $site->getConfiguration()['settings']['md_saml']?? [];
+                    return $this->getConfigurationWithBaseVariants(
+                        $settings,
+                        $site->getConfiguration()['settings']['baseVariants']?? []
+                    );
                 }
             }
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
+    }
+
+    /**
+     * Get SAML configuration with baseVariants
+     *
+     * @param array $mdSamlSettings
+     * @param array|null $baseVariants
+     * @return array
+     */
+    private function getConfigurationWithBaseVariants(array $mdSamlSettings, ?array $baseVariants): array
+    {
+        $overrideSettings = [];
+        if (!empty($baseVariants)) {
+            $expressionLanguageResolver = GeneralUtility::makeInstance(
+                Resolver::class,
+                'site',
+                []
+            );
+            foreach ($baseVariants as $baseVariant) {
+                try {
+                    if ((bool)$expressionLanguageResolver->evaluate($baseVariant['condition'])) {
+                        $overrideSettings = $baseVariant['md_saml'];
+                        break;
+                    }
+                } catch (SyntaxError $e) {
+                    // silently fail and do not evaluate
+                    // no logger here, as Site is currently cached and serialized
+                }
+            }
+        }
+
+        return array_replace_recursive($mdSamlSettings, $overrideSettings);
     }
 }
