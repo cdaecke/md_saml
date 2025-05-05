@@ -73,15 +73,23 @@ EXT:my_extension/Configuration/Sets/MdSamlOverrides/settings.yaml:
 
           x509cert: '%env(SAML_IDP_X509CERT)%'
 
-As you can see, you can use environment variables in your configuration in order
+    baseVariants:
+      - condition: 'applicationContext == "Development"'
+        md_saml:
+          mdsamlSpBaseUrl: "https://mysite.ddev.site"
+
+      - condition: 'applicationContext == "Testing"'
+        md_saml:
+          mdsamlSpBaseUrl: "https://test.domain.com"
+
+As you can see, you can use either environment variables or `baseVariants` in your configuration in order
 to configure different setups.
 
 ATTENTION
-Somehow, it is not possible to use environment variables in site sets at the moment. So if you want to use env vars, do it in the general site configuration in `<project-root>/config/sites/<identifier>/config.yaml`. Add following at the bottom of the config file:
+Somehow, it is not possible to use environment variables in site sets at the moment. So if you want to use env vars, do it in the general site configuration in `<project-root>/config/sites/<identifier>/settings.yaml`. Add following in the settings file:
 
-    settings:
-      md_saml:
-        mdsamlSpBaseUrl: '%env(SAML_BASE_DOMAIN)%'
+    md_saml:
+      mdsamlSpBaseUrl: '%env(SAML_BASE_DOMAIN)%'
 
 General information on site sets can be found
 [here](https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/SiteHandling/SiteSets.html).
