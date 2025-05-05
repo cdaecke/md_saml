@@ -1,3 +1,10 @@
+# Version 4.0.1 (2025-05-05)
+
+- [FEATURE] allow `baseVariants` in configuration. Thanks to [Bruno86](https://github.com/Bruno86)!
+
+All changes
+https://github.com/cdaecke/md_saml/compare/4.0.0...4.0.1
+
 # Version 4.0.0 (2025-04-04)
 
 - [FEATURE] TYPO3 v13 compatibility
