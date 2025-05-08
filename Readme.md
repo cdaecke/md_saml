@@ -118,8 +118,9 @@ Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login
 
 **Frontend**
 
-Activate frontend login by setting the constant `md_saml.fe_users.active = 1`.
-By default it is enabled and it will load a different login template.
+By default frontend login is enabled and it will load a different login template.
+Deactivate the frontend login by setting `md_saml.fe_users.active = false`.
+
 
 - `md_saml.fe_users.saml.sp.entityId`<br>
 Identifier of the frontend SP entity  (must be a URI)<br>
