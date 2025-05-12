@@ -1,3 +1,10 @@
+# Version 4.0.2 (2025-05-12)
+
+- [TASK] check, if site configuration exists. Thanks to [Georg Ringer](https://github.com/georgringer)!
+
+All changes
+https://github.com/cdaecke/md_saml/compare/4.0.1...4.0.2
+
 # Version 4.0.1 (2025-05-05)
 
 - [FEATURE] allow `baseVariants` in configuration. Thanks to [Bruno86](https://github.com/Bruno86)!
