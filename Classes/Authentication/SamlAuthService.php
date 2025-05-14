@@ -305,9 +305,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     // To avoid 'Open Redirect' attacks, before execute the
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
-                    $url = GeneralUtility::getIndpEnv('TYPO3_SITE_URL')
-                        . \TYPO3_MAINDIR
-                        . '?loginProvider=1648123062&error=1';
+                    $url = Utils::getSelfRoutedURLNoQuery() . '?loginProvider=1648123062&error=1';
                     throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
