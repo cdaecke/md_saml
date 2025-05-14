@@ -397,7 +397,7 @@ class SamlAuthService extends AbstractAuthenticationService
         // Add values from SSO provider
         foreach ($samlAttributes as $attributeName => $attributeValues) {
             if (isset($transformationArr[$attributeName])) {
-                $userArr[$transformationArr[$attributeName]] = $attributeValues[0];
+                $userArr[$transformationArr[$attributeName]] = count($attributeValues) === 1 ? $attributeValues[0] : $attributeValues;
             }
         }
 
