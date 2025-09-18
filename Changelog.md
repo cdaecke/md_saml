@@ -1,3 +1,10 @@
+# Version 4.0.4 (2025-09-18)
+
+- [BUGFIX] do not set `databaseDefaults` without a value since this stops the overriding process of custom settings for this area
+
+All changes
+https://github.com/cdaecke/md_saml/compare/4.0.3...4.0.4
+
 # Version 4.0.3 (2025-05-27)
 
 - [TASK] Allow array values in user array. The current functionality defaults to the first subvalue in case of array values. However, sometimes we need access to the entire array. For example if a user has multiple usergroups assigned in AD, and we want to implement a custom mapping via the provided EventListener. see https://github.com/cdaecke/md_saml/pull/66 Thanks to [kauz56](https://github.com/kauz56)!
