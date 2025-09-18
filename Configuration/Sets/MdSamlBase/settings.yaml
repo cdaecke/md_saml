@@ -24,11 +24,13 @@ md_saml:
       email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
       realName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
 
-    databaseDefaults:
-    #usergroup: 1
-    #lang: de
-    #db_mountpoints: 1
-    #file_mountpoints: 1
+    # This section allows you to set defaults for a newly created backend users
+    # You can add all fields of the database here
+    #databaseDefaults:
+      #usergroup: 1
+      #lang: de
+      #db_mountpoints: 1
+      #file_mountpoints: 1
 
   # Frontend users
   fe_users:
@@ -62,9 +64,9 @@ md_saml:
 
     # This section allows you to set defaults for a newly created frontend users
     # You can add all fields of the database here
-    databaseDefaults:
-    #pid: 1
-    #usergroup: 1
+    #databaseDefaults:
+      #pid: 1
+      #usergroup: 1
 
   # This holds the whole SAML configuration
   # For more details on the configuration see https://github.com/onelogin/php-saml
