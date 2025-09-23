@@ -78,11 +78,15 @@ class SettingsService implements SingletonInterface
      */
     private function getSamlConfig(): array
     {
-        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY');
+        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY')
+            . GeneralUtility::getIndpEnv('TYPO3_SITE_PATH')
+            . GeneralUtility::getIndpEnv('TYPO3_SITE_SCRIPT');
 
         /** @var Site $site */
         foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
-            if ($site->getBase()->getHost() === $siteUrl) {
+            $siteConfigUrl = rtrim($site->getBase()->getHost() . $site->getBase()->getPath(), '/');
+
+            if (str_starts_with($siteUrl, $siteConfigUrl)) {
                 $settings = $site->getConfiguration()['settings']['md_saml']?? [];
                 return $this->getConfigurationWithBaseVariants(
                     $settings,
@@ -91,7 +95,8 @@ class SettingsService implements SingletonInterface
             }
 
             foreach ($site->getLanguages() as $language) {
-                if ($language->getBase()->getHost() == $siteUrl) {
+                $siteConfigUrlLang = rtrim($language->getBase()->getHost() . $language->getBase()->getPath(), '/');
+                if (str_starts_with($siteUrl, $siteConfigUrlLang)) {
                     $settings = $site->getConfiguration()['settings']['md_saml']?? [];
                     return $this->getConfigurationWithBaseVariants(
                         $settings,
