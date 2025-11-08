@@ -78,32 +78,45 @@ class SettingsService implements SingletonInterface
      */
     private function getSamlConfig(): array
     {
-        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY')
+        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_REQUEST_HOST')
             . GeneralUtility::getIndpEnv('TYPO3_SITE_PATH')
             . GeneralUtility::getIndpEnv('TYPO3_SITE_SCRIPT');
 
-        /** @var Site $site */
-        foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
-            $siteConfigUrl = rtrim($site->getBase()->getHost() . $site->getBase()->getPath(), '/');
+        $searchParts = parse_url($siteUrl);
+        $searchHost  = $searchParts['host'] ?? null;
+        $searchPath  = rtrim($searchParts['path'] ?? '/', '/');
 
-            if (str_starts_with($siteUrl, $siteConfigUrl)) {
-                $settings = $site->getConfiguration()['settings']['md_saml']?? [];
-                return $this->getConfigurationWithBaseVariants(
-                    $settings,
-                    $site->getConfiguration()['settings']['baseVariants']?? []
-                );
+        $matches = [];
+        $sites = [];
+        $siteFinder = GeneralUtility::makeInstance(SiteFinder::class);
+        
+        foreach ($siteFinder->getAllSites() as $site) {
+            $siteConfigUrl = rtrim((string)$site->getBase(), '/');
+            $sites[$siteConfigUrl] = $site;
+            $parts = parse_url($siteConfigUrl);
+
+            if (($parts['host'] ?? null) !== $searchHost) {
+                continue;
             }
 
-            foreach ($site->getLanguages() as $language) {
-                $siteConfigUrlLang = rtrim($language->getBase()->getHost() . $language->getBase()->getPath(), '/');
-                if (str_starts_with($siteUrl, $siteConfigUrlLang)) {
-                    $settings = $site->getConfiguration()['settings']['md_saml']?? [];
-                    return $this->getConfigurationWithBaseVariants(
-                        $settings,
-                        $site->getConfiguration()['settings']['baseVariants']?? []
-                    );
-                }
+            $path = rtrim($parts['path'] ?? '/', '/');
+
+            // Match only if search path starts with the candidate path
+            if (str_starts_with($searchPath, $path)) {
+                $matches[$siteConfigUrl] = strlen($path); // track depth
             }
+        }
+
+        if ($matches) {
+            arsort($matches); // longest path = best match
+
+            /** @var \TYPO3\CMS\Core\Site\Entity\Site $site */
+            $site = $sites[key($matches)];
+            $settings = $site->getConfiguration()['settings']['md_saml']?? [];
+            return $this->getConfigurationWithBaseVariants(
+                $settings,
+                $site->getConfiguration()['settings']['baseVariants']?? []
+            );
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
