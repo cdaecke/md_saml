@@ -23,7 +23,7 @@
 	},
 	"require": {
 		"php": ">=8.1",
-		"onelogin/php-saml": "^4.0",
+		"onelogin/php-saml": ">=4.3.1 <5.0",
 		"typo3/cms-backend": "^12.4",
 		"typo3/cms-core": "^12.4"
 	},

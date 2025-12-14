@@ -1,3 +1,9 @@
+# Version 3.0.8 (2025-12-14)
+- [SECURITY] Update `onelogin/php-saml` version requirement to 4.3.1  because of [CVE-2025-66475](https://github.com/advisories/GHSA-5j8p-438x-rgg5) and `robrichards/xmlseclibs` [CVE-2025-66475](https://github.com/advisories/GHSA-c4cc-x928-vjw9)
+
+All changes
+https://github.com/cdaecke/md_saml/compare/3.0.7...3.0.8
+
 # Version 3.0.7 (2025-03-17)
 - [FEATURE] Add IdP-initiated logout with proper redirects. Big thanks [Jonas Wolf](https://github.com/jwtue)
 - [TASK] Use contructor injection for Logger. Big thanks [Sybille](https://github.com/sypets)
