@@ -50,15 +50,16 @@ class SamlMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        $queryParams = $request->getQueryParams();
         if (
-            !isset($_REQUEST['loginProvider'])
-            || (int)$_REQUEST['loginProvider'] !== 1648123062
-            || !isset($_REQUEST['mdsamlmetadata'])
+            !isset($queryParams['loginProvider'])
+            || (int)$queryParams['loginProvider'] !== 1648123062
+            || !isset($queryParams['mdsamlmetadata'])
         ) {
             // not our business, do nothing
             return $handler->handle($request);
         }
-        $loginType = $_REQUEST['loginType'];
+        $loginType = $queryParams['loginType'] ?? '';
         if ($loginType === 'frontend') {
             $loginType = 'FE';
         } elseif ($loginType === 'backend') {
@@ -91,7 +92,15 @@ class SamlMiddleware implements MiddlewareInterface
                     Error::METADATA_SP_INVALID
                 );
             } catch (\Exception $e) {
-                echo $e->getMessage();
+                $this->logger->error(
+                    'SAML metadata error: {message}',
+                    ['message' => $e->getMessage(), 'exception' => $e]
+                );
+                $response = $this->responseFactory
+                    ->createResponse(500)
+                    ->withHeader('Content-Type', 'text/plain; charset=utf-8');
+                $response->getBody()->write($e->getMessage());
+                return $response;
             }
         } else {
             $response = $this->responseFactory->createResponse();

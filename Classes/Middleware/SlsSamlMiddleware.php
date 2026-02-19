@@ -51,10 +51,11 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        $queryParams = $request->getQueryParams();
         if (
-            isset($_REQUEST['loginProvider'])
-            && (int)$_REQUEST['loginProvider'] === 1648123062
-            && isset($_REQUEST['sls'])
+            isset($queryParams['loginProvider'])
+            && (int)$queryParams['loginProvider'] === 1648123062
+            && isset($queryParams['sls'])
         ) {
             $extSettings = $this->settingsService->getSettings($this->context);
             $auth = new Auth($extSettings['saml'], true);
@@ -76,5 +77,5 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
-    abstract protected function performLogoff(ServerRequestInterface $request);
+    abstract protected function performLogoff(ServerRequestInterface $request): void;
 }

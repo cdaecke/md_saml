@@ -20,6 +20,7 @@ use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
 use OneLogin\Saml2\ValidationError;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use TYPO3\CMS\Core\Authentication\AbstractAuthenticationService;
 use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
@@ -28,8 +29,8 @@ use TYPO3\CMS\Core\Crypto\PasswordHashing\PasswordHashFactory;
 use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Database\ConnectionPool;
 use TYPO3\CMS\Core\Database\Query\QueryBuilder;
-use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\DefaultRestrictionContainer;
+use TYPO3\CMS\Core\Database\Query\Restriction\DeletedRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\PageIdListRestriction;
 use TYPO3\CMS\Core\Database\Query\Restriction\QueryRestrictionContainerInterface;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
@@ -292,13 +293,21 @@ class SamlAuthService extends AbstractAuthenticationService
                 );
 
                 if ($auth->getSettings()->isDebugActive()) {
-                    echo '<h1>SAML error</h1>';
-                    echo '<p>' . implode(', ', $errors) . '</p>';
-                    echo '<p>' . htmlentities((string) $auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
                     $this->logger->debug(
-                        'SAML authentification: ' . __METHOD__ . ' EXIT in line ' . __LINE__
+                        'SAML authentification: {errors}' . chr(10) . '{errorDetails}',
+                        [
+                            'errors' => implode(', ', $errors),
+                            'errorDetails' => $auth->getLastErrorReason(),
+                        ]
                     );
-                    exit;
+                    $body = '<h1>SAML error</h1>'
+                        . '<p>' . htmlentities(implode(', ', $errors), ENT_QUOTES | ENT_HTML5) . '</p>'
+                        . '<p>' . htmlentities((string) $auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
+                    $response = GeneralUtility::makeInstance(ResponseFactoryInterface::class)
+                        ->createResponse()
+                        ->withHeader('Content-Type', 'text/html; charset=utf-8');
+                    $response->getBody()->write($body);
+                    throw new PropagateResponseException($response, 1706128565);
                 }
 
                 if (isset($_POST['RelayState']) && Utils::getSelfURL() !== $_POST['RelayState']) {
@@ -476,7 +485,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
         if (!empty($userData['username'])) {
             $userArr = [
-                'password' => $saltingInstance->getHashedPassword(md5(uniqid('', true))),
+                'password' => $saltingInstance->getHashedPassword(bin2hex(random_bytes(32))),
                 'crdate' => time(),
                 'tstamp' => time(),
                 'disable' => 0,

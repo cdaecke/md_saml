@@ -39,7 +39,7 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         return parent::process($request, $handler);
     }
     
-    protected function performLogoff(ServerRequestInterface $request) {
+    protected function performLogoff(ServerRequestInterface $request): void {
 
         $context = GeneralUtility::makeInstance(Context::class);
 

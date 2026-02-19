@@ -8,15 +8,7 @@ use Psr\EventDispatcher\StoppableEventInterface;
 
 final class ChangeUserEvent implements StoppableEventInterface
 {
-    /**
-     * @var ServerRequestInterface
-     */
-    private $userData = [];
-
-    public function __construct(array $userData)
-    {
-        $this->userData = $userData;
-    }
+    public function __construct(private array $userData) {}
 
     public function getUserData(): array
     {

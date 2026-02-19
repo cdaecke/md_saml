@@ -1,6 +1,5 @@
 <?php
 
-use Mediadreams\MdSaml\Middleware\AcsSamlMiddleware;
 use Mediadreams\MdSaml\Middleware\SamlMiddleware;
 use Mediadreams\MdSaml\Middleware\SlsBackendSamlMiddleware;
 use Mediadreams\MdSaml\Middleware\SlsFrontendSamlMiddleware;
