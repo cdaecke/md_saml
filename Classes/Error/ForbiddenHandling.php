@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Mediadreams\MdSaml\Error;
 
 use Mediadreams\MdSaml\Service\SettingsService;
@@ -39,10 +41,13 @@ class ForbiddenHandling implements PageErrorHandlerInterface
         $loginType = 'FE';
         $extSettings = $this->settingsService->getSettings($loginType);
         if (isset($extSettings['saml'])) {
+            // Auth::login() sends a Location header and calls exit() internally (onelogin/php-saml).
+            // If the redirect is executed, the code below is never reached.
             $auth = new Auth($extSettings['saml']);
             $auth->login();
         }
-        // if successful, above code redirects
-        return new RedirectResponse('/', 403);
+
+        // Fallback: SAML is not configured – redirect to home page.
+        return new RedirectResponse('/', 302);
     }
 }

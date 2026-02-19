@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
+use Mediadreams\MdSaml\Authentication\SamlAuthService;
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
@@ -54,7 +55,7 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
         $queryParams = $request->getQueryParams();
         if (
             isset($queryParams['loginProvider'])
-            && (int)$queryParams['loginProvider'] === 1648123062
+            && (int)$queryParams['loginProvider'] === SamlAuthService::SAML_LOGIN_PROVIDER_ID
             && isset($queryParams['sls'])
         ) {
             $extSettings = $this->settingsService->getSettings($this->context);
@@ -62,7 +63,7 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
             $auth->processSLO(cbDeleteSession: fn() => $this->performLogoff($request));
             $errors = $auth->getErrors();
 
-            if (!empty($errors)) {
+            if ($errors !== []) {
                 $this->logger->error(
                     'SAML logout error in SlsSamlMiddleware',
                     [

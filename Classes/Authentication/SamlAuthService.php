@@ -60,6 +60,13 @@ class SamlAuthService extends AbstractAuthenticationService
     public const FAIL_BREAK = 0;
 
     /**
+     * Login provider identifier registered in ext_localconf.php
+     *
+     * @var int
+     */
+    public const SAML_LOGIN_PROVIDER_ID = 1648123062;
+
+    /**
      * An array with all configured settings
      *
      * @var array
@@ -313,7 +320,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     // To avoid 'Open Redirect' attacks, before execute the
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
-                    $url = Utils::getSelfRoutedURLNoQuery() . '?loginProvider=1648123062&error=1';
+                    $url = Utils::getSelfRoutedURLNoQuery() . '?loginProvider=' . self::SAML_LOGIN_PROVIDER_ID . '&error=1';
                     throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
@@ -338,7 +345,7 @@ class SamlAuthService extends AbstractAuthenticationService
                 }
 
                 $this->logger->debug(
-                    "Record for user '{username}'  found. Will *not* be updated due to configuration.",
+                    "Record for user '{username}' found. Will *not* be updated due to configuration.",
                     [
                         'username' => $user['username'],
                     ]
@@ -349,7 +356,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
             if ($this->extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
                 $this->logger->debug(
-                    "*No* record for user  '{username}'  found, but will be created.",
+                    "*No* record for user '{username}' found, but will be created.",
                     [
                         'username' => $user['username'],
                     ]
@@ -358,7 +365,7 @@ class SamlAuthService extends AbstractAuthenticationService
             }
 
             $this->logger->debug(
-                "Record for user  '{username}'  not found. Will *not* be created due to configuration.",
+                "Record for user '{username}' not found. Will *not* be created due to configuration.",
                 [
                     'username' => $user['username'],
                 ]
@@ -416,7 +423,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param array $userData
      * @return array|false
      */
-    private function updateUser(array $localUser, array $userData)
+    protected function updateUser(array $localUser, array $userData)
     {
         $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'

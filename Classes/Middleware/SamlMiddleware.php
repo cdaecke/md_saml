@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
+use Mediadreams\MdSaml\Authentication\SamlAuthService;
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Settings;
@@ -53,7 +54,7 @@ class SamlMiddleware implements MiddlewareInterface
         $queryParams = $request->getQueryParams();
         if (
             !isset($queryParams['loginProvider'])
-            || (int)$queryParams['loginProvider'] !== 1648123062
+            || (int)$queryParams['loginProvider'] !== SamlAuthService::SAML_LOGIN_PROVIDER_ID
             || !isset($queryParams['mdsamlmetadata'])
         ) {
             // not our business, do nothing
@@ -99,7 +100,7 @@ class SamlMiddleware implements MiddlewareInterface
                 $response = $this->responseFactory
                     ->createResponse(500)
                     ->withHeader('Content-Type', 'text/plain; charset=utf-8');
-                $response->getBody()->write($e->getMessage());
+                $response->getBody()->write('An error occurred while processing SAML metadata.');
                 return $response;
             }
         } else {
