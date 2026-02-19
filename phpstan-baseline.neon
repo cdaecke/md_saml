@@ -1,2 +1,14 @@
 parameters:
-	ignoreErrors: []
+	ignoreErrors:
+		-
+			message: '#Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$configuration\.#'
+			path: Classes/Error/ForbiddenHandling.php
+			count: 1
+		-
+			message: '#Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$statusCode\.#'
+			path: Classes/Error/ForbiddenHandling.php
+			count: 1
+		-
+			message: '#Unreachable statement - code above always terminates\.#'
+			path: Classes/Middleware/SlsSamlMiddleware.php
+			count: 1

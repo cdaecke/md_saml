@@ -38,7 +38,7 @@ class SettingsService implements SingletonInterface
      * Return settings
      *
      * @param string $loginType Can be 'FE' or 'BE'
-     * @return array
+     * @return array<string, mixed>
      * @throws \RuntimeException
      */
     public function getSettings(string $loginType): array
@@ -92,7 +92,7 @@ class SettingsService implements SingletonInterface
             }
 
             foreach ($site->getLanguages() as $language) {
-                if ($language->getBase()->getHost() == $siteUrl) {
+                if ($language->getBase()->getHost() === $siteUrl) {
                     $settings = $site->getConfiguration()['settings']['md_saml']?? [];
                     return $this->getConfigurationWithBaseVariants(
                         $settings,
@@ -115,7 +115,7 @@ class SettingsService implements SingletonInterface
     private function getConfigurationWithBaseVariants(array $mdSamlSettings, ?array $baseVariants): array
     {
         $overrideSettings = [];
-        if (!empty($baseVariants)) {
+        if ($baseVariants !== null && $baseVariants !== []) {
             $expressionLanguageResolver = GeneralUtility::makeInstance(
                 Resolver::class,
                 'site',

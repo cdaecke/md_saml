@@ -79,7 +79,6 @@ class SamlAuthService extends AbstractAuthenticationService
 
     public function __construct()
     {
-        /** @var SettingsService $settingsService */
         $this->settingsService = GeneralUtility::makeInstance(SettingsService::class);
         $this->eventDispatcher = GeneralUtility::makeInstance(EventDispatcherInterface::class);
     }
@@ -99,11 +98,11 @@ class SamlAuthService extends AbstractAuthenticationService
         $loginType = $this->pObj->loginType;
         $this->extSettings = $this->settingsService->getSettings($loginType);
 
-        if ($loginType == 'BE') {
+        if ($loginType === 'BE') {
             $backendConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)
                 ->get('md_saml');
 
-            if (($backendConfiguration['activateBackendLogin'] ?? 0) == 1) {
+            if (($backendConfiguration['activateBackendLogin'] ?? 0) === '1') {
                 $this->useAuthService = $this->inCharge();
             }
         } else {
@@ -135,14 +134,14 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $loginType = $this->pObj->loginType;
 
-        if (empty($user['username'])) {
+        if (($user['username'] ?? '') === '') {
             $errorMessage = $loginType . " Login-attempt from %s (%s), username '%s',"
                 . ' SSO authentication failed (ext:md_saml)!';
             $this->writelog(
                 255,
                 3,
                 3,
-                1,
+                null,
                 $errorMessage,
                 [
                     $this->authInfo['REMOTE_ADDR'],
@@ -208,7 +207,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param $username
      * @param $extraWhere
      * @param $dbUserSetup
-     * @return false|mixed[]
+     * @return array<string, mixed>|false
      */
     public function fetchUserRecord($username, $extraWhere = '', $dbUserSetup = '')
     {
@@ -254,7 +253,7 @@ class SamlAuthService extends AbstractAuthenticationService
 
         $loginType = $this->pObj->loginType;
 
-        if (!$this->extSettings) {
+        if ($this->extSettings === []) {
             $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return false;
         }
@@ -271,7 +270,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     255,
                     3,
                     3,
-                    1,
+                    null,
                     $errorMessage,
                     [
                         $this->authInfo['REMOTE_ADDR'],
@@ -367,9 +366,6 @@ class SamlAuthService extends AbstractAuthenticationService
         } else {
             $auth = new Auth($this->extSettings['saml']);
             $auth->login();
-            $this->logger->debug(
-                'SAML authentification has been processed.'
-            );
         }
 
         $this->logger->debug(
@@ -434,13 +430,13 @@ class SamlAuthService extends AbstractAuthenticationService
         )->getUserData();
 
         foreach ($userData as $key => $value) {
-            if ($localUser[$key] != $value) {
+            if ($localUser[$key] !== $value) {
                 $changed = true;
                 break;
             }
         }
 
-        if (!$changed || $uid === 0 || empty($userData['username'])) {
+        if (!$changed || $uid === 0 || ($userData['username'] ?? '') === '') {
             return $localUser;
         }
 
@@ -483,7 +479,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $saltingInstance = GeneralUtility::makeInstance(PasswordHashFactory::class)
             ->getDefaultHashInstance($this->authInfo['loginType']);
 
-        if (!empty($userData['username'])) {
+        if (($userData['username'] ?? '') !== '') {
             $userArr = [
                 'password' => $saltingInstance->getHashedPassword(bin2hex(random_bytes(32))),
                 'crdate' => time(),

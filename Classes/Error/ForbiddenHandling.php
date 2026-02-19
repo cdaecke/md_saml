@@ -38,10 +38,10 @@ class ForbiddenHandling implements PageErrorHandlerInterface
     ): ResponseInterface {
         $loginType = 'FE';
         $extSettings = $this->settingsService->getSettings($loginType);
-        if ($extSettings) {
+        if (isset($extSettings['saml'])) {
             $auth = new Auth($extSettings['saml']);
             $auth->login();
-        } 
+        }
         // if successful, above code redirects
         return new RedirectResponse('/', 403);
     }

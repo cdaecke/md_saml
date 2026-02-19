@@ -17,8 +17,9 @@ use OneLogin\Saml2\Error;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 
 /**
  * Class SlsFrontendSamlMiddleware
@@ -38,14 +39,16 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         $this->context = 'FE';
         return parent::process($request, $handler);
     }
-    
-    protected function performLogoff(ServerRequestInterface $request): void {
 
+    protected function performLogoff(ServerRequestInterface $request): void
+    {
         $context = GeneralUtility::makeInstance(Context::class);
 
-        if ($context->getPropertyFromAspect('frontend.user', 'isLoggedIn')) {
-           $feUser = $request->getAttribute('frontend.user');
-           $feUser->logoff();
+        if ((bool)$context->getPropertyFromAspect('frontend.user', 'isLoggedIn')) {
+            $feUser = $request->getAttribute('frontend.user');
+            if ($feUser instanceof FrontendUserAuthentication) {
+                $feUser->logoff();
+            }
         }
     }
 }

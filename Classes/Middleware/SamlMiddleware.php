@@ -67,7 +67,7 @@ class SamlMiddleware implements MiddlewareInterface
         }
 
         $extSettings = $this->settingsService->getSettings($loginType);
-        if (!$extSettings) {
+        if ($extSettings === []) {
             $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return $handler->handle($request);
         }
@@ -108,7 +108,5 @@ class SamlMiddleware implements MiddlewareInterface
             $response->getBody()->write('Please log into TYPO3!');
             return $response;
         }
-
-        return $handler->handle($request);
     }
 }

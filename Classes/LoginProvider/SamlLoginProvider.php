@@ -35,7 +35,7 @@ class SamlLoginProvider implements LoginProviderInterface
         );
 
         $queryParams = ($GLOBALS['TYPO3_REQUEST'] ?? null)?->getQueryParams() ?? [];
-        if (!empty($queryParams['error'])) {
+        if (isset($queryParams['error']) && $queryParams['error'] !== '') {
             $view->assign('loginError', true);
         }
 
