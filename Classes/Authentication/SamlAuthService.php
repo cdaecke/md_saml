@@ -372,7 +372,11 @@ class SamlAuthService extends AbstractAuthenticationService
             );
         } else {
             $auth = new Auth($this->extSettings['saml']);
-            $auth->login();
+            // Pass the redirect URL as RelayState to the IdP so it is returned
+            // in the SAMLResponse POST and can be used to restore the redirect
+            // target after the IdP roundtrip (see RelayState handling above).
+            $returnTo = $_POST['redirect_url'] ?? $_POST['referer'] ?? null;
+            $auth->login($returnTo);
         }
 
         $this->logger->debug(
