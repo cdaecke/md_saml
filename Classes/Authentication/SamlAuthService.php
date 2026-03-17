@@ -397,7 +397,11 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        $userArr = [];
+        $userArr = [
+            // Mark this user record as SAML-authenticated so the logout middleware
+            // can identify SAML users and trigger SP-initiated SLO correctly.
+            'md_saml_source' => 1,
+        ];
         $transformationArr = array_flip($this->extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
         // Add default values from site settings to user array

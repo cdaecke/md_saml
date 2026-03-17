@@ -48,7 +48,8 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         if (isset($request->getQueryParams()['acs'])) {
             $response = $handler->handle($request);
 
-            $relayState = $_POST['RelayState'] ?? '';
+            $parsedBody = $request->getParsedBody();
+            $relayState = is_array($parsedBody) ? (string)($parsedBody['RelayState'] ?? '') : '';
             $feUser = $request->getAttribute('frontend.user');
 
             if (

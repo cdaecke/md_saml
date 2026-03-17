@@ -53,10 +53,15 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         $queryParams = $request->getQueryParams();
+        // loginProvider is optional: IdP-initiated SLO callbacks may not include it,
+        // and SP-initiated SLO via BeforeUserLogoutListener redirects back without it.
+        // If loginProvider is present it must match our provider ID.
         if (
-            isset($queryParams['loginProvider'])
-            && (int)$queryParams['loginProvider'] === SamlAuthService::SAML_LOGIN_PROVIDER_ID
-            && isset($queryParams['sls'])
+            isset($queryParams['sls'])
+            && (
+                !isset($queryParams['loginProvider'])
+                || (int)$queryParams['loginProvider'] === SamlAuthService::SAML_LOGIN_PROVIDER_ID
+            )
         ) {
             $extSettings = $this->settingsService->getSettings($this->context);
             $auth = new Auth($extSettings['saml'], true);
