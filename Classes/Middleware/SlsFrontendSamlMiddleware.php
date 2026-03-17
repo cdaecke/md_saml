@@ -65,6 +65,13 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
             return $response;
         }
 
+        // Skip SLO processing if this is a BE-initiated SLO callback (identified by cookie).
+        // SlsBackendSamlMiddleware (registered before this in the frontend stack) handles it.
+        $queryParams = $request->getQueryParams();
+        if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'BE') {
+            return $handler->handle($request);
+        }
+
         return parent::process($request, $handler);
     }
 

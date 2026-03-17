@@ -65,7 +65,11 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
         ) {
             $extSettings = $this->settingsService->getSettings($this->context);
             $auth = new Auth($extSettings['saml'], true);
-            $auth->processSLO(cbDeleteSession: fn() => $this->performLogoff($request));
+            // retrieveParametersFromServer=true uses $_SERVER['QUERY_STRING'] directly
+            // instead of reconstructing the query string from $_GET. This preserves the
+            // exact URL encoding that the IdP (e.g. ADFS) used when computing the signature,
+            // preventing "Signature validation failed" errors caused by encoding differences.
+            $auth->processSLO(retrieveParametersFromServer: true, cbDeleteSession: fn() => $this->performLogoff($request));
             $errors = $auth->getErrors();
 
             if ($errors !== []) {
@@ -74,6 +78,7 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
                     [
                         'context' => $this->context,
                         'errors' => $errors,
+                        'lastErrorReason' => $auth->getLastErrorReason(),
                         'exception' => $auth->getLastErrorException(),
                     ]
                 );

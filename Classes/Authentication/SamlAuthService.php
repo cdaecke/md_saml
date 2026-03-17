@@ -333,6 +333,14 @@ class SamlAuthService extends AbstractAuthenticationService
 
             $samlAttributes = $auth->getAttributes();
             $user = $this->getUserArrayForDb($samlAttributes);
+
+            // Store SAML session data needed for SP-initiated SLO (logout).
+            // The onelogin/php-saml library uses $_SESSION for this, but TYPO3
+            // does not use PHP sessions, so we persist it in the user record instead.
+            $user['md_saml_nameid'] = $auth->getNameId() ?? '';
+            $user['md_saml_nameid_format'] = $auth->getNameIdFormat() ?? '';
+            $user['md_saml_session_index'] = $auth->getSessionIndex() ?? '';
+
             $record = $this->fetchUserRecord($user['username']);
             if (is_array($record)) {
                 if (
@@ -354,6 +362,15 @@ class SamlAuthService extends AbstractAuthenticationService
                         'username' => $user['username'],
                     ]
                 );
+
+                // Always persist SAML session data (NameID, session index) even when
+                // updateIfExist=false, so SP-initiated SLO can read it at logout time.
+                $this->updateUser($record, [
+                    'username' => $user['username'],
+                    'md_saml_nameid' => $user['md_saml_nameid'],
+                    'md_saml_nameid_format' => $user['md_saml_nameid_format'],
+                    'md_saml_session_index' => $user['md_saml_session_index'],
+                ]);
 
                 return $record;
             }

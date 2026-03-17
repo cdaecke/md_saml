@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
+use Mediadreams\MdSaml\Authentication\SamlAuthService;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
 use Psr\Http\Message\ResponseInterface;
@@ -62,11 +63,29 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
                 if ($extSettings !== []) {
                     try {
                         $auth = new Auth($extSettings['saml']);
-                        // $stay=true returns the IdP SLO redirect URL without calling exit().
-                        $sloUrl = $auth->logout(stay: true);
+                        // Pass NameID and session index so ADFS can identify the session
+                        // to terminate. These are stored in the user record at login time
+                        // because TYPO3 does not use PHP sessions (where the library would
+                        // normally keep this data between the login and logout requests).
+                        $sloUrl = $auth->logout(
+                            nameId: ($GLOBALS['BE_USER']->user['md_saml_nameid'] ?? '') ?: null,
+                            sessionIndex: ($GLOBALS['BE_USER']->user['md_saml_session_index'] ?? '') ?: null,
+                            nameIdFormat: $GLOBALS['BE_USER']->user['md_saml_nameid_format'] ?? '',
+                            stay: true,
+                        );
 
                         if (is_string($sloUrl) && $sloUrl !== '') {
-                            return new RedirectResponse($sloUrl, 303);
+                            // Set a short-lived HttpOnly cookie to mark this as a BE SLO.
+                            // IdPs (e.g. ADFS) do not preserve a custom RelayState, so we
+                            // use a cookie instead. The cookie is sent back when the IdP
+                            // redirects the browser to the sp.singleLogoutService.url,
+                            // allowing SlsBackendSamlMiddleware (registered in both stacks)
+                            // to identify and handle the callback with BE settings.
+                            $response = new RedirectResponse($sloUrl, 303);
+                            return $response->withAddedHeader(
+                                'Set-Cookie',
+                                'md_saml_slo_context=BE; Path=/; Max-Age=300; HttpOnly; SameSite=Lax'
+                            );
                         }
                     } catch (Error $e) {
                         $this->logger->error(
@@ -79,7 +98,68 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             }
         }
 
-        return parent::process($request, $handler);
+        // SLO callback from IdP: only handle if the BE SLO cookie is present.
+        // This middleware is registered in both stacks so it can handle BE callbacks
+        // even when the IdP redirects to a frontend URL (e.g. ADFS with a frontend
+        // URL in its SP metadata). The cookie was set when the SLO was initiated above.
+        $queryParams = $request->getQueryParams();
+        if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'BE') {
+            $extSettings = $this->settingsService->getSettings($this->context);
+            if ($extSettings !== []) {
+                try {
+                    $auth = new Auth($extSettings['saml'], true);
+                    // stay=true prevents the library from calling exit() internally.
+                    // retrieveParametersFromServer=true preserves the exact URL encoding
+                    // used by the IdP when computing the redirect-binding signature.
+                    $auth->processSLO(
+                        retrieveParametersFromServer: true,
+                        stay: true,
+                        cbDeleteSession: fn() => $this->performLogoff($request)
+                    );
+                    $errors = $auth->getErrors();
+
+                    if ($errors !== []) {
+                        if (in_array('logout_not_success', $errors, true)) {
+                            // IdP returned non-success (e.g. ADFS with Windows Integrated
+                            // Authentication cannot terminate the WIA session via SAML).
+                            // Still terminate the local TYPO3 session so the user is logged out.
+                            $this->performLogoff($request);
+                            $this->logger->warning(
+                                'md_saml: IdP returned non-success status for BE SLO. '
+                                . 'Local TYPO3 session terminated anyway.',
+                                ['errors' => $errors, 'lastErrorReason' => $auth->getLastErrorReason()]
+                            );
+                        } else {
+                            $this->logger->error(
+                                'SAML logout error in SlsBackendSamlMiddleware',
+                                [
+                                    'context' => $this->context,
+                                    'errors' => $errors,
+                                    'lastErrorReason' => $auth->getLastErrorReason(),
+                                    'exception' => $auth->getLastErrorException(),
+                                ]
+                            );
+                        }
+                    }
+                } catch (Error $e) {
+                    $this->logger->error(
+                        'md_saml: Error processing BE SLO callback.',
+                        ['exception' => $e->getMessage()]
+                    );
+                }
+            }
+
+            // Clear the marker cookie and redirect to the backend login.
+            // We do not call $handler->handle() here to avoid triggering unnecessary
+            // frontend page rendering — the user belongs back at the backend login.
+            $response = new RedirectResponse('/typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID, 303);
+            return $response->withAddedHeader(
+                'Set-Cookie',
+                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+            );
+        }
+
+        return $handler->handle($request);
     }
 
     protected function performLogoff(ServerRequestInterface $request): void
