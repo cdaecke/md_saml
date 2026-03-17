@@ -183,6 +183,9 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
+        // $_REQUEST is intentional here: SamlAuthService runs as part of the TYPO3
+        // authentication chain, before $GLOBALS['TYPO3_REQUEST'] is populated.
+        // PSR-7 request access is therefore not available at this execution stage.
         return ($_REQUEST['login-provider'] ?? '') === 'md_saml'
             && ($this->pObj->loginType === 'BE' || $this->pObj->loginType === 'FE')
             && isset($this->login['status'])
@@ -265,6 +268,7 @@ class SamlAuthService extends AbstractAuthenticationService
             return false;
         }
 
+        // $_REQUEST is intentional here: see comment in inCharge() above.
         if (isset($_REQUEST['acs'])) {
             $auth = new Auth($this->extSettings['saml']);
             $auth->processResponse();

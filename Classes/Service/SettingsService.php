@@ -53,7 +53,7 @@ class SettingsService implements SingletonInterface
             $extSettings = $this->getSamlConfig();
         }
 
-        if (!$extSettings) {
+        if ($extSettings === []) {
             $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
             return [];
         }
@@ -124,7 +124,7 @@ class SettingsService implements SingletonInterface
             foreach ($baseVariants as $baseVariant) {
                 try {
                     if ((bool)$expressionLanguageResolver->evaluate($baseVariant['condition'])) {
-                        $overrideSettings = $baseVariant['md_saml'];
+                        $overrideSettings = $baseVariant['md_saml']?? [];
                         break;
                     }
                 } catch (SyntaxError $e) {
