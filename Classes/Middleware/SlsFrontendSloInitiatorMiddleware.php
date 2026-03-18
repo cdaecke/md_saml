@@ -29,13 +29,29 @@ use TYPO3\CMS\Core\Session\UserSessionManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
- * Class SlsFrontendSloInitiatorMiddleware
+ * Initiates SP-initiated SAML Single Logout for SAML-authenticated frontend users.
  *
- * Intercepts felogin logout POST requests for SAML-authenticated frontend users
- * and initiates SP-initiated SLO by redirecting to the IdP. Must run before
- * typo3/cms-frontend/authentication because FrontendUserAuthenticator processes
- * logintype=logout (and calls logoff()) during start(), which happens before
- * request attributes like 'frontend.user' are available to subsequent middlewares.
+ * Intercepts requests containing logintype=logout (as a GET parameter or in the POST
+ * body) for users whose fe_users record carries md_saml_source=1. Builds a signed
+ * LogoutRequest using the NameID and SessionIndex stored in fe_users at login time,
+ * and redirects the browser to the IdP's SLO endpoint.
+ *
+ * Must run before typo3/cms-frontend/authentication: FrontendUserAuthenticator calls
+ * FrontendUserAuthentication::start(), which processes logintype=logout and calls
+ * logoff() — making the user record unavailable to any later middleware. To work
+ * around this, the FE session is read directly via UserSessionManager and fe_users
+ * is queried for the SAML session data.
+ *
+ * Sets two short-lived HttpOnly cookies before redirecting to the IdP:
+ *   - md_saml_slo_context=FE  identifies the returning callback as a frontend SLO
+ *   - md_saml_slo_redirect=<url>  stores the Referer so SlsFrontendSamlMiddleware
+ *     can redirect the user back to the felogin page after the callback.
+ *
+ * If no SLO endpoint is configured, the user is not a SAML user, or any error
+ * occurs, the request is passed on unchanged and felogin performs a normal local
+ * logout without notifying the IdP.
+ *
+ * Registered in the frontend middleware stack only, before typo3/cms-frontend/authentication.
  */
 class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
 {

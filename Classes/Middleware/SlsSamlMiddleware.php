@@ -24,12 +24,26 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Class SlsSamlMiddleware
- * Do not call directly, but extend this class and set the `$context`!
+ * Abstract base class for SAML Single Logout Service (SLS) middlewares.
+ *
+ * Handles IdP-initiated SLO: when the IdP sends a LogoutRequest to the configured
+ * sp.singleLogoutService.url, this class validates the request, invokes the
+ * abstract performLogoff() to terminate the local TYPO3 session, and lets the
+ * onelogin/php-saml library send a signed LogoutResponse back to the IdP.
+ *
+ * SP-initiated SLO — where TYPO3 sends the first LogoutRequest — is handled
+ * entirely within the concrete subclasses (SlsBackendSamlMiddleware for BE users,
+ * SlsFrontendSloInitiatorMiddleware + SlsFrontendSamlMiddleware for FE users).
+ *
+ * Do not register this class directly in RequestMiddlewares.php.
+ * Extend it, set $context to 'BE' or 'FE', and implement performLogoff().
  */
 abstract class SlsSamlMiddleware implements MiddlewareInterface
 {
-
+    /**
+     * SAML context: 'BE' for backend users, 'FE' for frontend users.
+     * Must be set by the concrete subclass at the start of process().
+     */
     protected string $context = '';
 
     /**
@@ -88,5 +102,10 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
+    /**
+     * Terminates the local TYPO3 session for the current user.
+     * Called by processSLO() as the cbDeleteSession callback once the
+     * IdP's LogoutRequest has been successfully validated.
+     */
     abstract protected function performLogoff(ServerRequestInterface $request): void;
 }

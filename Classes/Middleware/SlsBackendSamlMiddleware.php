@@ -24,7 +24,24 @@ use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 /**
- * Class SlsBackendSamlMiddleware
+ * Handles SAML Single Logout for backend users in both directions.
+ *
+ * SP-initiated SLO (TYPO3 → IdP):
+ *   Intercepts the standard TYPO3 v13 backend logout route (/typo3/logout) for users
+ *   authenticated via SAML (md_saml_source=1). Builds a signed LogoutRequest using the
+ *   NameID and SessionIndex stored in be_users at login time, sets the short-lived
+ *   md_saml_slo_context=BE cookie to mark the flow, and redirects to the IdP's SLO
+ *   endpoint. The TYPO3 session is terminated only after the IdP callback arrives.
+ *
+ * IdP callback (IdP → TYPO3):
+ *   Processes the SAMLResponse identified by the md_saml_slo_context=BE cookie.
+ *   Validates the response, terminates the local backend session, clears the cookie,
+ *   and redirects to the backend login page.
+ *
+ * Registered in both the backend and frontend middleware stacks. The dual-stack
+ * registration is necessary because ADFS (and other IdPs) redirect the browser to
+ * the URL in sp.singleLogoutService, which in many setups points to a frontend URL
+ * even though the SLO was initiated from the backend.
  */
 class SlsBackendSamlMiddleware extends SlsSamlMiddleware
 {

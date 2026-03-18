@@ -25,7 +25,17 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Class SamlMiddleware
+ * Serves the SAML SP metadata XML for backend and frontend configurations.
+ *
+ * Triggered by requests that carry both `?loginProvider=<SAML_PROVIDER_ID>` and
+ * `?mdsamlmetadata`. The optional `?loginType=frontend|backend` parameter selects
+ * which site-set configuration is used to generate the metadata document.
+ *
+ * Access is restricted to authenticated backend users unless the `publicMetadata`
+ * option is enabled in the site-set configuration, which allows unauthenticated
+ * access (useful during initial IdP setup when no BE user can log in yet).
+ *
+ * Registered in the backend middleware stack only.
  */
 class SamlMiddleware implements MiddlewareInterface
 {
@@ -47,7 +57,7 @@ class SamlMiddleware implements MiddlewareInterface
      * @param ServerRequestInterface $request
      * @param RequestHandlerInterface $handler
      * @return ResponseInterface
-     * @throws Error
+     * @throws \Error
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -60,6 +70,9 @@ class SamlMiddleware implements MiddlewareInterface
             // not our business, do nothing
             return $handler->handle($request);
         }
+        // Normalise the URL-friendly loginType value to the internal context
+        // identifier used by SettingsService ('FE' / 'BE'). An empty string
+        // is passed through as-is, which causes getSettings() to return [].
         $loginType = $queryParams['loginType'] ?? '';
         if ($loginType === 'frontend') {
             $loginType = 'FE';
@@ -73,6 +86,8 @@ class SamlMiddleware implements MiddlewareInterface
             return $handler->handle($request);
         }
 
+        // Restrict metadata output to authenticated BE users, unless publicMetadata
+        // is explicitly enabled (e.g. during initial IdP setup).
         if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {
             try {
                 // Now we only validate SP settings

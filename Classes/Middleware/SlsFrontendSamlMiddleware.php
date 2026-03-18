@@ -25,7 +25,29 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 
 /**
- * Class SlsFrontendSamlMiddleware
+ * Handles post-login ACS redirects and SAML Single Logout callbacks for frontend users.
+ *
+ * ACS redirect (after FE SAML login):
+ *   After the IdP posts the SAMLResponse to the ACS endpoint (?acs), TYPO3 authenticates
+ *   the user. This middleware then redirects to the RelayState URL — the original page the
+ *   user intended to visit — which felogin cannot handle itself because RelayState is not
+ *   part of its standard redirect mechanism.
+ *
+ * SP-initiated SLO callback (IdP → TYPO3, FE context):
+ *   Handles the SAMLResponse returned by the IdP after SlsFrontendSloInitiatorMiddleware
+ *   initiated a frontend user SLO (identified by the md_saml_slo_context=FE cookie).
+ *   Validates the response, terminates the local frontend session, clears both SLO
+ *   cookies, and redirects back to the URL stored in md_saml_slo_redirect.
+ *
+ * IdP-initiated SLO:
+ *   Delegates to the parent SlsSamlMiddleware::process() for ?sls requests that carry
+ *   no context cookie (pure IdP-initiated logout without a prior SP LogoutRequest).
+ *
+ * BE SLO passthrough:
+ *   Skips all processing when md_saml_slo_context=BE is present — that callback is
+ *   handled by SlsBackendSamlMiddleware, which runs earlier in the frontend stack.
+ *
+ * Registered in the frontend middleware stack only, after typo3/cms-frontend/authentication.
  */
 class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
 {
