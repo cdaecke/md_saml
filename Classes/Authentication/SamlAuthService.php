@@ -397,6 +397,13 @@ class SamlAuthService extends AbstractAuthenticationService
             // in the SAMLResponse POST and can be used to restore the redirect
             // target after the IdP roundtrip (see RelayState handling above).
             $returnTo = $_POST['redirect_url'] ?? $_POST['referer'] ?? null;
+            // Validate that the redirect target belongs to the same origin before
+            // passing it as RelayState. An attacker could craft a login form POST
+            // with redirect_url=https://evil.com. If null, the library falls back
+            // to the current URL as RelayState.
+            if ($returnTo !== null && !str_starts_with($returnTo, Utils::getSelfURLhost())) {
+                $returnTo = null;
+            }
             $auth->login($returnTo);
         }
 
@@ -439,6 +446,28 @@ class SamlAuthService extends AbstractAuthenticationService
         foreach ($samlAttributes as $attributeName => $attributeValues) {
             if (isset($transformationArr[$attributeName])) {
                 $userArr[$transformationArr[$attributeName]] = count($attributeValues) === 1 ? $attributeValues[0] : $attributeValues;
+            }
+        }
+
+        // Strip security-sensitive columns to prevent privilege escalation and
+        // account takeover via misconfigured transformationArr / databaseDefaults
+        // or a compromised IdP sending unexpected attribute values.
+        // These columns must never be controlled by SAML. Use a ChangeUserEvent
+        // listener for intentional, explicit overrides.
+        // Note: 'disable' is intentionally not protected — creating new users in
+        // a disabled state is a legitimate moderation use case.
+        $protectedColumns = ['password', 'uid', 'deleted'];
+        if ($this->pObj->loginType === 'BE') {
+            $protectedColumns[] = 'admin';
+        }
+
+        foreach ($protectedColumns as $col) {
+            if (array_key_exists($col, $userArr)) {
+                $this->logger->warning(
+                    'md_saml: Blocked attempt to set protected column {column} via SAML attribute mapping or databaseDefaults.',
+                    ['column' => $col, 'loginType' => $this->pObj->loginType]
+                );
+                unset($userArr[$col]);
             }
         }
 

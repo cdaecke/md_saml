@@ -140,9 +140,14 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
             }
 
             // Determine redirect target from the stored cookie (set during initiation).
+            // Accept only same-origin URLs: a relative path starting with a single '/'
+            // or an absolute URL starting with the current host. Protocol-relative URLs
+            // (//evil.com) are explicitly rejected — they start with '/' but browsers
+            // resolve them to an external host, making them an open-redirect vector.
             $redirectTo = urldecode($request->getCookieParams()['md_saml_slo_redirect'] ?? '');
             if (
                 $redirectTo === ''
+                || str_starts_with($redirectTo, '//')
                 || (!str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, Utils::getSelfURLhost()))
             ) {
                 $redirectTo = '/';
@@ -152,11 +157,11 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
             $response = new RedirectResponse($redirectTo, 303);
             $response = $response->withAddedHeader(
                 'Set-Cookie',
-                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
             );
             return $response->withAddedHeader(
                 'Set-Cookie',
-                'md_saml_slo_redirect=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+                'md_saml_slo_redirect=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
             );
         }
 

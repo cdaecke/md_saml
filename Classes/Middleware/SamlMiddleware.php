@@ -88,7 +88,7 @@ class SamlMiddleware implements MiddlewareInterface
 
         // Restrict metadata output to authenticated BE users, unless publicMetadata
         // is explicitly enabled (e.g. during initial IdP setup).
-        if (isset($GLOBALS['BE_USER']->user) || (bool)($extSettings['publicMetadata'] ?? false)) {
+        if (isset($GLOBALS['BE_USER']->user['uid']) || (bool)($extSettings['publicMetadata'] ?? false)) {
             try {
                 // Now we only validate SP settings
                 $settings = new Settings($extSettings['saml'], true);

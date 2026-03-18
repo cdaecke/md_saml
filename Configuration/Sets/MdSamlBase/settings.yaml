@@ -242,6 +242,22 @@ md_saml:
       signMetadata: false
 
       # signatures and encryptions required
+      #
+      # SECURITY NOTE: The three flags below default to false (library defaults).
+      # Review each setting before going to production:
+      #
+      # wantAssertionsSigned — most critical: set to true if your IdP signs
+      #   assertions (every spec-compliant IdP including ADFS does). Leaving
+      #   this false allows unsigned assertions, which enables authentication
+      #   bypass if an attacker can reach the ACS endpoint.
+      #
+      # wantMessagesSigned — set to true if your IdP signs the outer
+      #   <samlp:Response> element (ADFS does; some IdPs sign only the
+      #   Assertion). Can be left false when wantAssertionsSigned is true.
+      #
+      # wantAssertionsEncrypted — set to true if your IdP supports assertion
+      #   encryption and you have configured sp.privateKey accordingly.
+      #
       # Indicates a requirement for the <samlp:Response>, <samlp:LogoutRequest> and
       # <samlp:LogoutResponse> elements received by this SP to be signed.
       wantMessagesSigned: false

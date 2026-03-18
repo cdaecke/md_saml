@@ -41,13 +41,17 @@ class ForbiddenHandling implements PageErrorHandlerInterface
         $loginType = 'FE';
         $extSettings = $this->settingsService->getSettings($loginType);
         if (isset($extSettings['saml'])) {
-            // Auth::login() sends a Location header and calls exit() internally (onelogin/php-saml).
-            // If the redirect is executed, the code below is never reached.
             $auth = new Auth($extSettings['saml']);
-            $auth->login();
+            // stay=true prevents the library from calling exit() internally and
+            // returns the IdP redirect URL instead, so we can issue a clean
+            // PSR-7 RedirectResponse without disrupting the TYPO3 lifecycle.
+            $loginUrl = $auth->login(stay: true);
+            if (is_string($loginUrl) && $loginUrl !== '') {
+                return new RedirectResponse($loginUrl, 302);
+            }
         }
 
-        // Fallback: SAML is not configured – redirect to home page.
+        // Fallback: SAML is not configured or login URL could not be built.
         return new RedirectResponse('/', 302);
     }
 }

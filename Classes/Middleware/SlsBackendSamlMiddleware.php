@@ -101,7 +101,7 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
                             $response = new RedirectResponse($sloUrl, 303);
                             return $response->withAddedHeader(
                                 'Set-Cookie',
-                                'md_saml_slo_context=BE; Path=/; Max-Age=300; HttpOnly; SameSite=Lax'
+                                'md_saml_slo_context=BE; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure'
                             );
                         }
                     } catch (Error $e) {
@@ -172,7 +172,7 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             $response = new RedirectResponse('/typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID, 303);
             return $response->withAddedHeader(
                 'Set-Cookie',
-                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
             );
         }
 
