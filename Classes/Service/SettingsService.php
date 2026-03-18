@@ -68,9 +68,64 @@ class SettingsService implements SingletonInterface
         $extSettings['saml']['sp']['assertionConsumerService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['assertionConsumerService']['url'];
         $extSettings['saml']['sp']['singleLogoutService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['singleLogoutService']['url'];
 
+        // Resolve cert/key values that contain file paths instead of inline content.
+        $extSettings['saml'] = $this->resolveCertValues($extSettings['saml']);
+
         return $this->eventDispatcher->dispatch(
             new AfterSettingsAreProcessedEvent($loginType, $extSettings)
         )->getSettings();
+    }
+
+    /**
+     * Resolve certificate and key values that contain file paths.
+     *
+     * For each of the four cert/key settings (sp.x509cert, sp.privateKey,
+     * sp.x509certNew, idp.x509cert) the value is tested against
+     * GeneralUtility::getFileAbsFileName(). If the result is a readable file
+     * the file content is loaded, PEM headers are stripped, and the raw
+     * base64 string replaces the original value. Non-path values (inline
+     * base64 content) are passed through unchanged.
+     *
+     * Supported path formats:
+     *   - Absolute path:   /var/secrets/saml/sp.crt
+     *   - Web-root rel.:   fileadmin/saml/sp.crt
+     *   - EXT: path:       EXT:my_site/Resources/Private/Certs/sp.crt
+     *
+     * @param array<string, mixed> $samlSettings
+     * @return array<string, mixed>
+     */
+    private function resolveCertValues(array $samlSettings): array
+    {
+        foreach (['sp.x509cert', 'sp.privateKey', 'sp.x509certNew', 'idp.x509cert'] as $dotPath) {
+            [$section, $key] = explode('.', $dotPath);
+            $value = (string)($samlSettings[$section][$key] ?? '');
+            if ($value === '') {
+                continue;
+            }
+
+            $absolutePath = GeneralUtility::getFileAbsFileName($value);
+            if ($absolutePath === '' || !is_file($absolutePath) || !is_readable($absolutePath)) {
+                // Not a resolvable path — treat as inline content, leave unchanged.
+                continue;
+            }
+
+            $content = file_get_contents($absolutePath);
+            if ($content === false) {
+                $this->logger->error(
+                    'md_saml: Could not read certificate file.',
+                    ['path' => $value]
+                );
+                continue;
+            }
+
+            // Strip PEM headers/footers (-----BEGIN CERTIFICATE-----, etc.)
+            // and all whitespace. The onelogin library expects raw base64.
+            $content = preg_replace('/-----BEGIN[^-]+-----/', '', $content) ?? $content;
+            $content = preg_replace('/-----END[^-]+-----/', '', $content) ?? $content;
+            $samlSettings[$section][$key] = preg_replace('/\s+/', '', $content) ?? $content;
+        }
+
+        return $samlSettings;
     }
 
     /**

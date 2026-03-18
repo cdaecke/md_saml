@@ -136,8 +136,13 @@ md_saml:
       # Take a look on lib/Saml2/Constants.php to see the NameIdFormat supported
       NameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
 
-      # Usually x509cert and privateKey of the SP are provided by files placed at
-      # the certs folder. But we can also provide them with the following parameters
+      # SP certificate and private key.
+      # Each value can be either the raw base64 content (without PEM headers)
+      # or a file path to a PEM file. Supported path formats:
+      #   - Absolute path:   /var/secrets/saml/sp.crt
+      #   - Web-root rel.:   fileadmin/saml/sp.crt
+      #   - EXT: path:       EXT:my_site/Resources/Private/Certs/sp.crt
+      # PEM headers (-----BEGIN CERTIFICATE-----) are stripped automatically.
       x509cert: ''
       privateKey: ''
 
@@ -178,7 +183,9 @@ md_saml:
         # HTTP-Redirect binding only
         binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
 
-      # Public x509 certificate of the IdP
+      # Public x509 certificate of the IdP.
+      # Accepts raw base64 content (without PEM headers) or a file path
+      # (same formats as the SP cert above).
       x509cert: ''
 
       #  Instead of use the whole x509cert you can use a fingerprint in
