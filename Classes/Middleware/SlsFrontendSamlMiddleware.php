@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
+use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
 use OneLogin\Saml2\Utils;
 use Psr\Http\Message\ResponseInterface;
@@ -65,9 +66,80 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
             return $response;
         }
 
+        $queryParams = $request->getQueryParams();
+
+        // SLO callback from IdP for a FE-initiated SLO (context cookie = FE).
+        // Processes the SAMLResponse, terminates the local FE session, clears both
+        // cookies, and redirects to the page that originally triggered the logout.
+        if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'FE') {
+            $extSettings = $this->settingsService->getSettings($this->context);
+            if ($extSettings !== []) {
+                try {
+                    $auth = new Auth($extSettings['saml'], true);
+                    // stay=true prevents the library from calling exit() internally.
+                    // retrieveParametersFromServer=true preserves the exact URL encoding
+                    // used by the IdP when computing the redirect-binding signature.
+                    $auth->processSLO(
+                        retrieveParametersFromServer: true,
+                        stay: true,
+                        cbDeleteSession: fn() => $this->performLogoff($request)
+                    );
+                    $errors = $auth->getErrors();
+
+                    if ($errors !== []) {
+                        if (in_array('logout_not_success', $errors, true)) {
+                            // IdP returned non-success (e.g. ADFS with Windows Integrated
+                            // Authentication cannot terminate the WIA session via SAML).
+                            // Still terminate the local TYPO3 session so the user is logged out.
+                            $this->performLogoff($request);
+                            $this->logger->warning(
+                                'md_saml: IdP returned non-success status for FE SLO. '
+                                . 'Local TYPO3 session terminated anyway.',
+                                ['errors' => $errors, 'lastErrorReason' => $auth->getLastErrorReason()]
+                            );
+                        } else {
+                            $this->logger->error(
+                                'SAML logout error in SlsFrontendSamlMiddleware',
+                                [
+                                    'context' => $this->context,
+                                    'errors' => $errors,
+                                    'lastErrorReason' => $auth->getLastErrorReason(),
+                                    'exception' => $auth->getLastErrorException(),
+                                ]
+                            );
+                        }
+                    }
+                } catch (Error $e) {
+                    $this->logger->error(
+                        'md_saml: Error processing FE SLO callback.',
+                        ['exception' => $e->getMessage()]
+                    );
+                }
+            }
+
+            // Determine redirect target from the stored cookie (set during initiation).
+            $redirectTo = urldecode($request->getCookieParams()['md_saml_slo_redirect'] ?? '');
+            if (
+                $redirectTo === ''
+                || (!str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, Utils::getSelfURLhost()))
+            ) {
+                $redirectTo = '/';
+            }
+
+            // Clear both context and redirect cookies, then redirect to the post-logout page.
+            $response = new RedirectResponse($redirectTo, 303);
+            $response = $response->withAddedHeader(
+                'Set-Cookie',
+                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+            );
+            return $response->withAddedHeader(
+                'Set-Cookie',
+                'md_saml_slo_redirect=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax'
+            );
+        }
+
         // Skip SLO processing if this is a BE-initiated SLO callback (identified by cookie).
         // SlsBackendSamlMiddleware (registered before this in the frontend stack) handles it.
-        $queryParams = $request->getQueryParams();
         if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'BE') {
             return $handler->handle($request);
         }
