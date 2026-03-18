@@ -9,8 +9,26 @@ services:
     exclude: '../Classes/Domain/Model/*'
 
   # EventListeners
+
+  # Generates a TYPO3 request token for the SAML ACS POST request.
+  # The ACS callback arrives as a plain POST from the IdP and carries no
+  # TYPO3 nonce, so the standard token check would reject it. This listener
+  # synthesises a valid token so that FrontendUserAuthentication / BackendUserAuthentication
+  # accept the request without disabling CSRF protection for normal logins.
   Mediadreams\MdSaml\Authentication\EventListener\ProcessRequestTokenListener:
     tags:
       - name: event.listener
         identifier: 'md-saml/process-request-token-listener'
         event: TYPO3\CMS\Core\Authentication\Event\BeforeRequestTokenProcessedEvent
+
+  # Bypasses sudo-mode password verification for SAML-authenticated BE users.
+  # Since TYPO3 v13.4.12 (TYPO3-CORE-SA-2025-013) elevated backend actions
+  # (e.g. profile edits) require the user to re-enter their password. SAML
+  # users have no TYPO3 password, so the dialog would permanently block them.
+  # The listener sets verificationRequired=false only when md_saml_source=1;
+  # non-SAML users are unaffected and go through the normal verification flow.
+  Mediadreams\MdSaml\Authentication\EventListener\SudoModeVerifyEventListener:
+    tags:
+      - name: event.listener
+        identifier: 'md-saml/sudo-mode-verify-listener'
+        event: TYPO3\CMS\Backend\Security\SudoMode\Event\SudoModeRequiredEvent
