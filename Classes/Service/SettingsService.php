@@ -18,6 +18,7 @@ use Mediadreams\MdSaml\Event\BeforeSettingsAreProcessedEvent;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\ExpressionLanguage\SyntaxError;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\ExpressionLanguage\Resolver;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Site\Entity\Site;
@@ -79,27 +80,42 @@ class SettingsService implements SingletonInterface
      */
     private function getSamlConfig(): array
     {
-        $siteUrl = GeneralUtility::getIndpEnv('TYPO3_HOST_ONLY');
+        // Strip the query string — prefix matching only needs scheme + host + path.
+        $requestUrl = GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL');
+        $requestUrlWithoutQuery = strtok($requestUrl, '?') ?: $requestUrl;
 
+        $bestMatch = null;
+        $bestMatchLength = -1;
+
+        // Use longest-prefix matching so that sites sharing the same hostname
+        // but differing only by sub-path (e.g. /sub-path-b vs /sub-path-c)
+        // are resolved correctly. Without path-aware matching the first site
+        // whose host matches would always win regardless of the actual path.
         /** @var Site $site */
         foreach (GeneralUtility::makeInstance(SiteFinder::class)->getAllSites() as $site) {
-            if ($site->getBase()->getHost() === $siteUrl) {
-                $settings = $site->getConfiguration()['settings']['md_saml']?? [];
-                return $this->getConfigurationWithBaseVariants(
-                    $settings,
-                    $site->getConfiguration()['settings']['baseVariants']?? []
-                );
+            // Normalise to a trailing slash so that /sub-path-b/ never
+            // accidentally matches requests that start with /sub-path-bar/.
+            $siteBase = rtrim((string)$site->getBase(), '/') . '/';
+            if (str_starts_with($requestUrlWithoutQuery, $siteBase) && strlen($siteBase) > $bestMatchLength) {
+                $bestMatch = $site;
+                $bestMatchLength = strlen($siteBase);
             }
 
             foreach ($site->getLanguages() as $language) {
-                if ($language->getBase()->getHost() === $siteUrl) {
-                    $settings = $site->getConfiguration()['settings']['md_saml']?? [];
-                    return $this->getConfigurationWithBaseVariants(
-                        $settings,
-                        $site->getConfiguration()['settings']['baseVariants']?? []
-                    );
+                $langBase = rtrim((string)$language->getBase(), '/') . '/';
+                if (str_starts_with($requestUrlWithoutQuery, $langBase) && strlen($langBase) > $bestMatchLength) {
+                    $bestMatch = $site;
+                    $bestMatchLength = strlen($langBase);
                 }
             }
+        }
+
+        if ($bestMatch !== null) {
+            $settings = $bestMatch->getConfiguration()['settings']['md_saml'] ?? [];
+            return $this->getConfigurationWithBaseVariants(
+                $settings,
+                $bestMatch->getConfiguration()['settings']['baseVariants'] ?? []
+            );
         }
 
         throw new \RuntimeException('The site configuration could not be resolved.', 1648646492);
@@ -119,7 +135,7 @@ class SettingsService implements SingletonInterface
             $expressionLanguageResolver = GeneralUtility::makeInstance(
                 Resolver::class,
                 'site',
-                []
+                ['applicationContext' => Environment::getContext()]
             );
             foreach ($baseVariants as $baseVariant) {
                 try {
