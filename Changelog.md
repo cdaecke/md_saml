@@ -1,3 +1,19 @@
+# Version 5.0.0
+
+Please run database migration after upgrading the extension!
+
+- [FEATURE] SP-initiated Backend SLO: backend users authenticated via SAML are now redirected to the IdP's SLO endpoint on logout. The local session is terminated only after the IdP confirms the logout via callback. Registered in both middleware stacks to handle ADFS setups where the IdP redirects to a frontend URL.
+- [FEATURE] SP-initiated Frontend SLO: felogin `logintype=logout` now triggers a SAML logout at the IdP for SAML-authenticated frontend users. The logout request is intercepted before `FrontendUserAuthenticator` runs so that NameID and SessionIndex are still available. Handles IdPs returning non-success status (e.g. ADFS with Windows Integrated Authentication) by terminating the local session anyway.
+- [FEATURE] Sudo Mode bypass for SAML backend users (requires TYPO3 ≥ 13.4.13): TYPO3 13.4.13 introduced `SudoModeRequiredEvent` (Feature #106743, TYPO3-CORE-SA-2025-013) to let external authentication providers skip the password re-verification dialog for elevated backend actions. SAML users have no TYPO3 password and would otherwise be permanently locked out of those actions. The new `SudoModeVerifyEventListener` bypasses the dialog exclusively for users with `md_saml_source=1`; non-SAML users are unaffected. On TYPO3 < 13.4.13 the listener is a no-op. **Security note**: bypassing sudo mode removes the "proof of presence" protection for SAML users — see [SudoMode](./Documentation/SudoMode.md) for a full discussion.
+- [FEATURE] Certificate file loading: `x509cert`, `privateKey`, `x509certNew` (SP) and `x509cert` (IdP) in `settings.yaml` now accept either inline base64 content or a file path to a PEM file. Absolute paths, web-root-relative paths, and `EXT:` paths are detected automatically; no separate `*File` field is needed. PEM headers are stripped automatically. (#21)
+- [FEATURE] Sub-path site matching: `SettingsService` now uses longest-prefix matching on the full request URL instead of hostname-only matching. Sites that share a hostname but differ only by sub-path (e.g. `/sub-path-b` vs. `/sub-path-c`) are resolved correctly. (#68)
+- [FEATURE] `applicationContext` is now available in `baseVariants` conditions in `settings.yaml`, matching TYPO3's own site-configuration behaviour. (#68)
+- [TASKS] Some security improvements
+- [DOC] Update documentation
+
+All changes
+https://github.com/cdaecke/md_saml/compare/4.0.5...5.0.0
+
 # Version 4.0.5 (2025-12-11)
 
 - [SECURITY] Update `onelogin/php-saml` version requirement to 4.3.1  because of [CVE-2025-66475](https://github.com/advisories/GHSA-5j8p-438x-rgg5) and `robrichards/xmlseclibs` [CVE-2025-66475](https://github.com/advisories/GHSA-c4cc-x928-vjw9)
@@ -39,8 +55,8 @@ https://github.com/cdaecke/md_saml/compare/4.0.0...4.0.1
 - [FEATURE] TYPO3 v13 compatibility
 
 ## Migration from v3 to v4
-- Activation of backend login is done in the extension configuration, which can be found 
-in the TYPO3 backend in `Settings -> Extension Configuration -> md_saml`. Please set 
+- Activation of backend login is done in the extension configuration, which can be found
+in the TYPO3 backend in `Settings -> Extension Configuration -> md_saml`. Please set
 checkbox according to your needs!
 - Remove the Typoscript constants of `ext:md_saml` from your configuration.
 - Include the Site Set `MdSaml base configuration (ext:md_saml)` in the Site Configuration
