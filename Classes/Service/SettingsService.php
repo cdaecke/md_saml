@@ -33,7 +33,8 @@ class SettingsService implements SingletonInterface
     public function __construct(
         private readonly LoggerInterface $logger,
         protected EventDispatcherInterface $eventDispatcher
-    ) {}
+    ) {
+    }
 
     /**
      * Return settings
@@ -132,6 +133,7 @@ class SettingsService implements SingletonInterface
      * Get SAML configuration
      *
      * @return array
+     * @throws \RuntimeException
      */
     private function getSamlConfig(): array
     {
@@ -195,12 +197,13 @@ class SettingsService implements SingletonInterface
             foreach ($baseVariants as $baseVariant) {
                 try {
                     if ((bool)$expressionLanguageResolver->evaluate($baseVariant['condition'])) {
-                        $overrideSettings = $baseVariant['md_saml']?? [];
+                        $overrideSettings = $baseVariant['md_saml'] ?? [];
                         break;
                     }
+                // phpcs:ignore Generic.CodeAnalysis.EmptyStatement
                 } catch (SyntaxError $e) {
-                    // silently fail and do not evaluate
-                    // no logger here, as Site is currently cached and serialized
+                    // Silently fail and do not evaluate.
+                    // No logger here — Site is currently cached and serialized.
                 }
             }
         }

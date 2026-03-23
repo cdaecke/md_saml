@@ -9,7 +9,8 @@ final class AfterSettingsAreProcessedEvent
     public function __construct(
         private readonly string $loginType,
         private array $settings
-    ){}
+    ) {
+    }
 
     public function getLoginType(): string
     {

@@ -433,7 +433,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $transformationArr = array_flip($this->extSettings[$this->authInfo['db_user']['table']]['transformationArr']);
 
         // Add default values from site settings to user array
-        foreach ($this->extSettings[$this->authInfo['db_user']['table']]['databaseDefaults']?? [] as $key => $val) {
+        foreach ($this->extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] ?? [] as $key => $val) {
             $key = trim((string) $key);
             $val = trim((string) $val);
 

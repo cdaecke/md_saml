@@ -49,7 +49,8 @@ class SamlMiddleware implements MiddlewareInterface
         private readonly ResponseFactoryInterface $responseFactory,
         protected SettingsService $settingsService,
         private readonly LoggerInterface $logger
-    ){}
+    ) {
+    }
 
     /**
      * Process request

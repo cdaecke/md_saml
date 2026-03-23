@@ -58,7 +58,8 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
     public function __construct(
         protected SettingsService $settingsService,
         protected readonly LoggerInterface $logger
-    ) {}
+    ) {
+    }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {

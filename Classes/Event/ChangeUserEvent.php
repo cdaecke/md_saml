@@ -10,7 +10,9 @@ final class ChangeUserEvent implements StoppableEventInterface
 {
     private bool $propagationStopped = false;
 
-    public function __construct(private array $userData) {}
+    public function __construct(private array $userData)
+    {
+    }
 
     public function getUserData(): array
     {
