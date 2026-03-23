@@ -1,6 +1,6 @@
 # TYPO3 Extension `md_saml`
 Single Sign-on extension for TYPO3. It enables you, to log into the TYPO3 backend or the website frontend by using an
-Identity Provider (IdP), for example an ADFS server (Active Directory Federation Services). It is fully configurable by TypoScript.
+Identity Provider (IdP), for example an ADFS server (Active Directory Federation Services). It is fully configurable via Site Sets and `settings.yaml`.
 
 ## Screenshots
 TYPO3 login:
@@ -20,6 +20,12 @@ Frontend login:
 - Activate backend login in the extension configuration. Frontend login is activated in the settings of the extension.
 - Configure the extension by overriding the site settings of the extension
 
+## Login and logout flows
+- [Backend login](./Documentation/BackendLogin.md)
+- [Backend logout](./Documentation/BackendLogout.md)
+- [Frontend login](./Documentation/FrontendLogin.md)
+- [Frontend logout](./Documentation/FrontendLogout.md)
+
 ## Configuration
 ### Site Set
 
@@ -34,62 +40,68 @@ configuration in place, add a Site Set in your site package as shown below:
 
 The following example shows, how to modify the default configuration of ext:md_saml:
 
-EXT:my_extension/Configuration/Sets/MdSamlOverrides/config.yaml:
+`EXT:my_extension/Configuration/Sets/MdSamlOverrides/config.yaml`:
 
-    name: my_extension/md_saml
-    label: MdSaml config for my website
-    dependencies:
-      - mediadreams/md_saml
+```yaml
+name: my_extension/md_saml
+label: MdSaml config for my website
+dependencies:
+  - mediadreams/md_saml
+```
 
-EXT:my_extension/Configuration/Sets/MdSamlOverrides/settings.yaml:
+`EXT:my_extension/Configuration/Sets/MdSamlOverrides/settings.yaml`:
 
+```yaml
+md_saml:
+  mdsamlSpBaseUrl: 'https://%env(BASE_DOMAIN)%'
+
+  be_users:
+    databaseDefaults:
+      usergroup: 3
+      lang: 'de'
+
+  fe_users:
+    saml:
+      sp:
+        entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
+        assertionConsumerService:
+          url: '/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
+
+  saml:
+    sp:
+      x509cert: '%env(SAML_SP_X509CERT)%'
+      privateKey: '%env(SAML_SP_PRIVATE_KEY)%'
+
+    idp:
+      entityId: 'https://auth.myprovider.de/adfs/services/trust'
+      singleSignOnService:
+        url: 'https://auth.myprovider.de/adfs/ls/'
+
+      singleLogoutService:
+        url: 'https://auth.myprovider.de/adfs/ls/'
+
+      x509cert: '%env(SAML_IDP_X509CERT)%'
+
+baseVariants:
+  - condition: 'applicationContext == "Development"'
     md_saml:
-      mdsamlSpBaseUrl: 'https://%env(BASE_DOMAIN)%'
+      mdsamlSpBaseUrl: "https://mysite.ddev.site"
 
-      be_users:
-        databaseDefaults:
-          usergroup: 3
-          lang: 'de'
-
-      fe_users:
-        saml:
-          sp:
-            entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
-            assertionConsumerService:
-              url: '/login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
-
-      saml:
-        sp:
-          x509cert: '%env(SAML_SP_X509CERT)%'
-          privateKey: '%env(SAML_SP_PRIVATE_KEY)%'
-
-        idp:
-          entityId: 'https://auth.myprovider.de/adfs/services/trust'
-          singleSignOnService:
-            url: 'https://auth.myprovider.de/adfs/ls/'
-
-          singleLogoutService:
-            url: 'https://auth.myprovider.de/adfs/ls/'
-
-          x509cert: '%env(SAML_IDP_X509CERT)%'
-
-    baseVariants:
-      - condition: 'applicationContext == "Development"'
-        md_saml:
-          mdsamlSpBaseUrl: "https://mysite.ddev.site"
-
-      - condition: 'applicationContext == "Testing"'
-        md_saml:
-          mdsamlSpBaseUrl: "https://test.domain.com"
+  - condition: 'applicationContext == "Testing"'
+    md_saml:
+      mdsamlSpBaseUrl: "https://test.domain.com"
+```
 
 As you can see, you can use either environment variables or `baseVariants` in your configuration in order
 to configure different setups.
 
-ATTENTION
+ATTENTION<br>
 Somehow, it is not possible to use environment variables in site sets at the moment. So if you want to use env vars, do it in the general site configuration in `<project-root>/config/sites/<identifier>/settings.yaml`. Add following in the settings file:
 
-    md_saml:
-      mdsamlSpBaseUrl: '%env(SAML_BASE_DOMAIN)%'
+```yaml
+md_saml:
+  mdsamlSpBaseUrl: '%env(SAML_BASE_DOMAIN)%'
+```
 
 General information on site sets can be found
 [here](https://docs.typo3.org/m/typo3/reference-coreapi/main/en-us/ApiOverview/SiteHandling/SiteSets.html).
@@ -99,8 +111,11 @@ General information on site sets can be found
 - Set a base url in `md_saml.mdsamlSpBaseUrl` for all endpoints
 - Generate a certificate for the Service Provider (SP)<br>
 `openssl req -newkey rsa:3072 -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key`
-- Open certificate files and remove all line breaks. Copy value of  `sp.crt` to
-`md_saml.saml.sp.x509cert` and value of `sp.key` to `md_saml.saml.sp.privateKey`
+- Set `md_saml.saml.sp.x509cert` and `md_saml.saml.sp.privateKey` to the generated files.
+  You can either provide the **file path** to the PEM file (recommended):<br>
+  `md_saml.saml.sp.x509cert: '/path/to/sp.crt'`<br>
+  `md_saml.saml.sp.privateKey: '/path/to/sp.key'`<br>
+  Or paste the **raw base64 content** directly (strip the `-----BEGIN/END-----` headers and all line breaks first).
 
 **Backend**
 
@@ -141,22 +156,6 @@ As underlying SAML toolkit the library of OneLogin is used (no account with OneL
 See full [documentation](https://github.com/onelogin/php-saml) for details on the configuration.
 
 #### Users
-You are able to create new users, if they are not present at the time of login.
- - Backend<br>
- `md_saml.be_users.createIfNotExist`...<br>
- Default = 1, so be_users will be created, if they do not exist.
- - Frontend<br>
- `md_saml.fe_users.createIfNotExist`...<br>
-  Default = 1, so fe_users will be created, if they do not exist.
-
-You are able to update existing users, if they are already present at the time of login.
- - Backend<br>
- `md_saml.be_users.updateIfExist`...<br>
- Default = 1, so be_users will be updated, if they exist.
- - Frontend<br>
- `md_saml.fe_users.updateIfExist`...<br>
-  Default = 1, so fe_users will be updated, if they exist.
-
 **Backend**
 
 - `md_saml.be_users.createIfNotExist`<br>
@@ -176,7 +175,7 @@ Decide whether a frontend user should be updated (Default = 1)
 - `md_saml.fe_users.databaseDefaults`...<br>
 This section allows you to set defaults for a newly created frontend user. You can add any fields of the database here.<br>
 Example: `md_saml.fe_users.databaseDefaults.usergroup = 123` will create a new user with usergroup 123 attached.<br>
-ATTENTION: `md_saml.fe_users.databaseDefaults.pid` will be used as storage for newsly created fe_users.
+ATTENTION: `md_saml.fe_users.databaseDefaults.pid` will be used as storage for newly created fe_users.
 
 #### SSO
 The returned value of the SSO provider can be anything. With the following configuration set the names of the returned
