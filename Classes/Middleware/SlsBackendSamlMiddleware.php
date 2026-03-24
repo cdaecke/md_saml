@@ -67,7 +67,7 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         $this->context = 'BE';
 
         $initiatedResponse = $this->initiateBackendSlo($request);
-        if ($initiatedResponse !== null) {
+        if ($initiatedResponse instanceof ResponseInterface) {
             return $initiatedResponse;
         }
 
@@ -123,11 +123,13 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             // Pass NameID and SessionIndex so the IdP (e.g. ADFS) can identify the
             // exact session to terminate. These are persisted in be_users at login time
             // because TYPO3 does not use PHP sessions between requests.
+            $nameId = $GLOBALS['BE_USER']->user['md_saml_nameid'] ?? '';
+            $sessionIndex = $GLOBALS['BE_USER']->user['md_saml_session_index'] ?? '';
             $sloUrl = $auth->logout(
-                nameId: ($GLOBALS['BE_USER']->user['md_saml_nameid'] ?? '') ?: null,
-                sessionIndex: ($GLOBALS['BE_USER']->user['md_saml_session_index'] ?? '') ?: null,
-                nameIdFormat: $GLOBALS['BE_USER']->user['md_saml_nameid_format'] ?? '',
+                nameId: $nameId !== '' ? $nameId : null,
+                sessionIndex: $sessionIndex !== '' ? $sessionIndex : null,
                 stay: true,
+                nameIdFormat: $GLOBALS['BE_USER']->user['md_saml_nameid_format'] ?? '',
             );
 
             if (is_string($sloUrl) && $sloUrl !== '') {
@@ -140,11 +142,11 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
                     'md_saml_slo_context=BE; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure'
                 );
             }
-        } catch (Error $e) {
+        } catch (Error $error) {
             $this->logger->error(
                 'md_saml: Could not build SAML SLO redirect URL during BE logout. '
                 . 'Is idp.singleLogoutService configured?',
-                ['exception' => $e->getMessage()]
+                ['exception' => $error->getMessage()]
             );
         }
 
@@ -175,8 +177,8 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
                 // used by the IdP when computing the redirect-binding signature.
                 $auth->processSLO(
                     retrieveParametersFromServer: true,
-                    stay: true,
-                    cbDeleteSession: fn() => $this->performLogoff($request)
+                    cbDeleteSession: fn() => $this->performLogoff($request),
+                    stay: true
                 );
                 $errors = $auth->getErrors();
 

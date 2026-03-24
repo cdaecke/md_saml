@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Rector\Config\RectorConfig;
 use Rector\ValueObject\PhpVersion;
-use Rector\Php74\Rector\LNumber\AddLiteralSeparatorToNumberRector;
 use Rector\PostRector\Rector\NameImportingPostRector;
 use Rector\Set\ValueObject\DowngradeLevelSetList;
 use Rector\Set\ValueObject\LevelSetList;
@@ -37,10 +36,10 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->sets([
         SetList::CODE_QUALITY,
         SetList::CODING_STYLE,
-        LevelSetList::UP_TO_PHP_81,
-        DowngradeLevelSetList::DOWN_TO_PHP_81,
+        LevelSetList::UP_TO_PHP_82,
+        DowngradeLevelSetList::DOWN_TO_PHP_82,
         SetList::TYPE_DECLARATION,
-        Typo3LevelSetList::UP_TO_TYPO3_12,
+        Typo3LevelSetList::UP_TO_TYPO3_13,
     ]);
 
     $rectorConfig->parallel(120, 5);
@@ -62,7 +61,7 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->importShortClasses(false);
 
     // Define your target version which you want to support
-    $rectorConfig->phpVersion(PhpVersion::PHP_81);
+    $rectorConfig->phpVersion(PhpVersion::PHP_82);
 
     // If you only want to process one/some TYPO3 extension(s), you can specify its path(s) here.
     // If you use the option --config change __DIR__ to getcwd()
@@ -97,7 +96,6 @@ return static function (RectorConfig $rectorConfig): void {
             getcwd() . '/**/Configuration/**/*.php',
         ],
 
-        AddLiteralSeparatorToNumberRector::class,
     ]);
 
     // Optional non-php file functionalities:
@@ -123,7 +121,7 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->ruleWithConfiguration(
         ExtEmConfRector::class,
         [
-            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '12.4.0-12.4.99',
+            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '13.4.0-13.4.99',
             ExtEmConfRector::ADDITIONAL_VALUES_TO_BE_REMOVED => [
                 'dependencies',
                 'conflicts',

@@ -1,14 +1,55 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$configuration\.#'
-			path: Classes/Error/ForbiddenHandling.php
-			count: 1
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 2
+			path: Classes/Authentication/SamlAuthService.php
+
 		-
-			message: '#Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$statusCode\.#'
-			path: Classes/Error/ForbiddenHandling.php
-			count: 1
+			message: '#^Out of 5 possible constant types, only 0 \- 0\.0 %% actually have it\. Add more constant types to get over 99 %%$#'
+			identifier: typeCoverage.constantTypeCoverage
+			count: 5
+			path: Classes/Authentication/SamlAuthService.php
+
 		-
-			message: '#Unreachable statement - code above always terminates\.#'
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: Classes/Error/ForbiddenHandling.php
+
+		-
+			message: '#^Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$configuration\.$#'
+			identifier: constructor.unusedParameter
+			count: 1
+			path: Classes/Error/ForbiddenHandling.php
+
+		-
+			message: '#^Constructor of class Mediadreams\\MdSaml\\Error\\ForbiddenHandling has an unused parameter \$statusCode\.$#'
+			identifier: constructor.unusedParameter
+			count: 1
+			path: Classes/Error/ForbiddenHandling.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: Classes/Middleware/SlsBackendSamlMiddleware.php
+
+		-
+			message: '#^There is no request attribute "route" configured so we can''t figure out the exact type to return when calling Psr\\Http\\Message\\ServerRequestInterface\:\:getAttribute$#'
+			identifier: phpstanTypo3.requestAttributeValidation
+			count: 1
+			path: Classes/Middleware/SlsBackendSamlMiddleware.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: Classes/Middleware/SlsFrontendSloInitiatorMiddleware.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
 			path: Classes/Middleware/SlsSamlMiddleware.php
-			count: 1

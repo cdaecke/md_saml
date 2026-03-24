@@ -98,7 +98,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @param array $authInfo Information array. Holds submitted form data etc.
      * @param AbstractUserAuthentication $pObj Parent object
      */
-    public function initAuth($mode, $loginData, $authInfo, $pObj)
+    public function initAuth($mode, $loginData, $authInfo, $pObj): void
     {
         parent::initAuth($mode, $loginData, $authInfo, $pObj);
 
@@ -108,14 +108,11 @@ class SamlAuthService extends AbstractAuthenticationService
         if ($loginType === 'BE') {
             $backendConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)
                 ->get('md_saml');
-
             if (($backendConfiguration['activateBackendLogin'] ?? 0) === '1') {
                 $this->useAuthService = $this->inCharge();
             }
-        } else {
-            if (($this->extSettings['fe_users']['active'] ?? false) === true) {
-                $this->useAuthService = $this->inCharge();
-            }
+        } elseif (($this->extSettings['fe_users']['active'] ?? false) === true) {
+            $this->useAuthService = $this->inCharge();
         }
     }
 
@@ -229,7 +226,7 @@ class SamlAuthService extends AbstractAuthenticationService
             $pid = $this->extSettings['fe_users']['databaseDefaults']['pid'];
             $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)->getQueryBuilderForTable('fe_users');
             $expressionBuilder = $queryBuilder->expr();
-            $dbUser['enable_clause'] = (string) $this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
+            $dbUser['enable_clause'] = (string)$this->getDatabasePidRestriction($pid, 'fe_users')->buildExpression(
                 ['fe_users' => 'fe_users'],
                 $expressionBuilder
             );
@@ -312,7 +309,7 @@ class SamlAuthService extends AbstractAuthenticationService
                     );
                     $body = '<h1>SAML error</h1>'
                         . '<p>' . htmlentities(implode(', ', $errors), ENT_QUOTES | ENT_HTML5) . '</p>'
-                        . '<p>' . htmlentities((string) $auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
+                        . '<p>' . htmlentities((string)$auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
                     $response = GeneralUtility::makeInstance(ResponseFactoryInterface::class)
                         ->createResponse()
                         ->withHeader('Content-Type', 'text/html; charset=utf-8');
@@ -401,9 +398,10 @@ class SamlAuthService extends AbstractAuthenticationService
             // passing it as RelayState. An attacker could craft a login form POST
             // with redirect_url=https://evil.com. If null, the library falls back
             // to the current URL as RelayState.
-            if ($returnTo !== null && !str_starts_with($returnTo, Utils::getSelfURLhost())) {
+            if ($returnTo !== null && !str_starts_with((string)$returnTo, Utils::getSelfURLhost())) {
                 $returnTo = null;
             }
+
             $auth->login($returnTo);
         }
 
@@ -434,8 +432,8 @@ class SamlAuthService extends AbstractAuthenticationService
 
         // Add default values from site settings to user array
         foreach ($this->extSettings[$this->authInfo['db_user']['table']]['databaseDefaults'] ?? [] as $key => $val) {
-            $key = trim((string) $key);
-            $val = trim((string) $val);
+            $key = trim((string)$key);
+            $val = trim((string)$val);
 
             if ($val !== '') {
                 $userArr[$key] = $val;

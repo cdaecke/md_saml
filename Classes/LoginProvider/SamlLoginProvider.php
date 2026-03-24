@@ -30,9 +30,7 @@ class SamlLoginProvider implements LoginProviderInterface
      */
     public function render(StandaloneView $view, PageRenderer $pageRenderer, LoginController $loginController): void
     {
-        $view->setTemplatePathAndFilename(
-            GeneralUtility::getFileAbsFileName('EXT:md_saml/Resources/Private/Templates/Backend/LoginSaml.html')
-        );
+        $view->getRenderingContext()->getTemplatePaths()->setTemplatePathAndFilename(GeneralUtility::getFileAbsFileName('EXT:md_saml/Resources/Private/Templates/Backend/LoginSaml.html'));
 
         $queryParams = ($GLOBALS['TYPO3_REQUEST'] ?? null)?->getQueryParams() ?? [];
         if (isset($queryParams['error']) && $queryParams['error'] !== '') {

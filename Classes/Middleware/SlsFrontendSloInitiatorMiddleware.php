@@ -122,11 +122,13 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
             // Pass NameID and session index so the IdP can identify the session
             // to terminate. Stored in fe_users at login because TYPO3 does not
             // use PHP sessions (where the library would normally keep this data).
+            $nameId = $user['md_saml_nameid'] ?? '';
+            $sessionIndex = $user['md_saml_session_index'] ?? '';
             $sloUrl = $auth->logout(
-                nameId: ($user['md_saml_nameid'] ?? '') ?: null,
-                sessionIndex: ($user['md_saml_session_index'] ?? '') ?: null,
-                nameIdFormat: $user['md_saml_nameid_format'] ?? '',
+                nameId: $nameId !== '' ? $nameId : null,
+                sessionIndex: $sessionIndex !== '' ? $sessionIndex : null,
                 stay: true,
+                nameIdFormat: $user['md_saml_nameid_format'] ?? '',
             );
 
             if (is_string($sloUrl) && $sloUrl !== '') {
@@ -148,11 +150,11 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
                     'md_saml_slo_redirect=' . urlencode($redirectAfter) . '; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure'
                 );
             }
-        } catch (Error $e) {
+        } catch (Error $error) {
             $this->logger->error(
                 'md_saml: Could not build SAML SLO redirect URL during FE logout. '
                 . 'Is idp.singleLogoutService configured?',
-                ['exception' => $e->getMessage()]
+                ['exception' => $error->getMessage()]
             );
         }
 

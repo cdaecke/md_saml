@@ -71,6 +71,7 @@ class SamlMiddleware implements MiddlewareInterface
             // not our business, do nothing
             return $handler->handle($request);
         }
+
         // Normalise the URL-friendly loginType value to the internal context
         // identifier used by SettingsService ('FE' / 'BE'). An empty string
         // is passed through as-is, which causes getSettings() to return [].

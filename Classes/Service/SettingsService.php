@@ -139,7 +139,8 @@ class SettingsService implements SingletonInterface
     {
         // Strip the query string — prefix matching only needs scheme + host + path.
         $requestUrl = GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL');
-        $requestUrlWithoutQuery = strtok($requestUrl, '?') ?: $requestUrl;
+        $stripped = strtok($requestUrl, '?');
+        $requestUrlWithoutQuery = $stripped !== false ? $stripped : $requestUrl;
 
         $bestMatch = null;
         $bestMatchLength = -1;
@@ -201,7 +202,7 @@ class SettingsService implements SingletonInterface
                         break;
                     }
                 // phpcs:ignore Generic.CodeAnalysis.EmptyStatement
-                } catch (SyntaxError $e) {
+                } catch (SyntaxError $error) {
                     // Silently fail and do not evaluate.
                     // No logger here — Site is currently cached and serialized.
                 }

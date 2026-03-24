@@ -103,8 +103,8 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
                     // used by the IdP when computing the redirect-binding signature.
                     $auth->processSLO(
                         retrieveParametersFromServer: true,
-                        stay: true,
-                        cbDeleteSession: fn() => $this->performLogoff($request)
+                        cbDeleteSession: fn() => $this->performLogoff($request),
+                        stay: true
                     );
                     $errors = $auth->getErrors();
 
