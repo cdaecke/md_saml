@@ -27,7 +27,7 @@ The IdP callback arrives at the frontend stack. `SlsBackendSamlMiddleware` (regi
 
 ## Step 5 — Redirect to backend login
 
-After the callback is processed, the cookie is cleared and the user is redirected to the TYPO3 backend login page.
+After the callback is processed, the cookie is cleared and the user is redirected to the TYPO3 backend login page. The redirect URL is built using `NormalizedParams::getSitePath()` so that sub-directory installations (e.g. `https://www.domain.com/directory/`) are handled correctly — the path prefix is prepended to `typo3/?loginProvider=...`.
 
 ## Sequence diagram
 
@@ -60,11 +60,11 @@ sequenceDiagram
 
         FE->>FE: Auth::processSLO(stay:true)
         note over FE: performLogoff() → no-op, session already gone
-        FE-->>User: 303 + Set-Cookie: md_saml_slo_context= (cleared)<br/>Location: /typo3/?loginProvider=...
+        FE-->>User: 303 + Set-Cookie: md_saml_slo_context= (cleared)<br/>Location: [sitePath]typo3/?loginProvider=...
 
         note over FE: SlsFrontendSamlMiddleware (FE Stack)<br/>?sls + Cookie=BE → skips processing
 
-        User->>BE: GET /typo3/?loginProvider=...
+        User->>BE: GET [sitePath]typo3/?loginProvider=...
         BE-->>User: TYPO3 Backend Login
     end
 ```

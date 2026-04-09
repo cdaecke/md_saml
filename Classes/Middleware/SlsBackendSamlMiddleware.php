@@ -237,7 +237,10 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         }
 
         // Clear the marker cookie and redirect to the backend login.
-        $response = new RedirectResponse('/typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID, 303);
+        // Use NormalizedParams::getSitePath() to respect sub-directory installations
+        // (e.g. https://www.domain.com/directory/). Defaults to '/' for root installs.
+        $sitePath = $request->getAttribute('normalizedParams')?->getSitePath() ?? '/';
+        $response = new RedirectResponse($sitePath . 'typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID, 303);
         return $response->withAddedHeader(
             'Set-Cookie',
             'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
