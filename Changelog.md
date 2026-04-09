@@ -1,4 +1,11 @@
-# Version 5.0.0
+# Version 5.0.1 (2026-04-09)
+
+- [BUGFIX] make sure, that the BE/FE logout is working even if there is no logout service at the IdPs end or the IdP does not return for some reason.
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.0.0...5.0.1
+
+# Version 5.0.0 (2026-03-23)
 
 Please run database migration after upgrading the extension!
 
