@@ -83,11 +83,21 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
      * Intercept the TYPO3 backend logout route for SAML-authenticated users and
      * redirect to the IdP's SLO endpoint.
      *
-     * Checks four preconditions before acting:
+     * Checks preconditions before acting:
      *   - The current route is /typo3/logout (not an SLO callback)
      *   - A BE user is logged in with md_saml_source=1
      *   - The backend SAML login is enabled in the extension configuration
      *   - The SAML settings are available and valid
+     *   - The IdP has an SLO endpoint configured
+     *
+     * If the IdP has no SLO endpoint (idp.singleLogoutService.url is empty),
+     * null is returned immediately so that process() falls through to the
+     * standard TYPO3 session termination — preserving pre-v5 behaviour for
+     * IdPs that do not support SLO (e.g. Google Workspace).
+     *
+     * When SAML SLO is initiated, the local TYPO3 session is terminated
+     * immediately before the IdP redirect. This ensures the user is always
+     * logged out of TYPO3 even if the IdP SLO callback never arrives.
      *
      * On success, sets the md_saml_slo_context=BE cookie (used to identify the
      * IdP callback later) and returns a 303 redirect to the IdP SLO URL.
@@ -118,6 +128,13 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             return null;
         }
 
+        // If the IdP has no SLO endpoint (key stripped by SettingsService when
+        // idp.singleLogoutService.url is empty), skip SAML logout entirely and
+        // fall through to the standard TYPO3 session termination.
+        if (!isset($extSettings['saml']['idp']['singleLogoutService'])) {
+            return null;
+        }
+
         try {
             $auth = new Auth($extSettings['saml']);
             // Pass NameID and SessionIndex so the IdP (e.g. ADFS) can identify the
@@ -133,9 +150,16 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             );
 
             if (is_string($sloUrl) && $sloUrl !== '') {
+                // Terminate the local TYPO3 session immediately — this ensures
+                // the user is logged out of TYPO3 even if the IdP SLO callback
+                // never arrives (e.g. network failure or IdP timeout).
+                // handleSloCallback() will call performLogoff() again, but that
+                // is a no-op once the session is already gone.
+                $this->performLogoff($request);
+
                 // Set a short-lived cookie to mark this flow as a BE SLO.
-                // IdPs (e.g. ADFS) do not reliably preserve RelayState, so the cookie
-                // is used to identify the callback in handleSloCallback() below.
+                // IdPs (e.g. ADFS) do not reliably preserve RelayState, so the
+                // cookie is used to identify the callback in handleSloCallback().
                 $response = new RedirectResponse($sloUrl, 303);
                 return $response->withAddedHeader(
                     'Set-Cookie',

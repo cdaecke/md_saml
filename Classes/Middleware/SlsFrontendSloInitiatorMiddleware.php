@@ -47,9 +47,15 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
  *   - md_saml_slo_redirect=<url>  stores the Referer so SlsFrontendSamlMiddleware
  *     can redirect the user back to the felogin page after the callback.
  *
- * If no SLO endpoint is configured, the user is not a SAML user, or any error
- * occurs, the request is passed on unchanged and felogin performs a normal local
- * logout without notifying the IdP.
+ * If the IdP has no SLO endpoint (idp.singleLogoutService.url is empty), the user
+ * is not a SAML user, or any error occurs, the request is passed on unchanged and
+ * felogin performs a normal local logout without notifying the IdP — preserving
+ * pre-v5 behaviour for IdPs that do not support SLO (e.g. Google Workspace).
+ *
+ * When SAML SLO is initiated, the local FE session is terminated immediately
+ * before the IdP redirect via UserSessionManager::removeSession(). This ensures
+ * the user is always logged out of TYPO3 even if the IdP SLO callback never
+ * arrives (e.g. network failure or IdP timeout).
  *
  * Registered in the frontend middleware stack only, before typo3/cms-frontend/authentication.
  */
@@ -117,6 +123,13 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
             return $handler->handle($request);
         }
 
+        // If the IdP has no SLO endpoint (key stripped by SettingsService when
+        // idp.singleLogoutService.url is empty), skip SAML logout entirely and
+        // let felogin perform a normal local logout without notifying the IdP.
+        if (!isset($extSettings['saml']['idp']['singleLogoutService'])) {
+            return $handler->handle($request);
+        }
+
         try {
             $auth = new Auth($extSettings['saml']);
             // Pass NameID and session index so the IdP can identify the session
@@ -132,6 +145,13 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
             );
 
             if (is_string($sloUrl) && $sloUrl !== '') {
+                // Terminate the local FE session immediately — this ensures the
+                // user is logged out of TYPO3 even if the IdP SLO callback never
+                // arrives (e.g. network failure or IdP timeout).
+                // SlsFrontendSamlMiddleware will call performLogoff() again on the
+                // callback, but that is a no-op once the session is already gone.
+                $userSessionManager->removeSession($session);
+
                 // Store the referer as the post-logout redirect target so the user
                 // lands back on the felogin page (now showing the login form).
                 // Use a cookie because ADFS does not preserve custom RelayState.

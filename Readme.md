@@ -25,6 +25,7 @@ Frontend login:
 - [Backend logout](./Documentation/BackendLogout.md)
 - [Frontend login](./Documentation/FrontendLogin.md)
 - [Frontend logout](./Documentation/FrontendLogout.md)
+- [Sudo Mode](./Documentation/SudoMode.md)
 
 ## Configuration
 ### Site Set
@@ -79,6 +80,7 @@ md_saml:
 
       singleLogoutService:
         url: 'https://auth.myprovider.de/adfs/ls/'
+        # Leave url empty or omit singleLogoutService entirely if your IdP does not support SLO.
 
       x509cert: '%env(SAML_IDP_X509CERT)%'
 
@@ -111,6 +113,10 @@ General information on site sets can be found
 - Set a base url in `md_saml.mdsamlSpBaseUrl` for all endpoints
 - Generate a certificate for the Service Provider (SP)<br>
 `openssl req -newkey rsa:3072 -new -x509 -days 3652 -nodes -out sp.crt -keyout sp.key`
+- Configure the IdP's Single Logout Service endpoint in `md_saml.saml.idp.singleLogoutService.url`.<br>
+  If your IdP does not support Single Logout (e.g. Google Workspace), leave the value empty or omit
+  the `singleLogoutService` key entirely. The extension will then skip the SAML SLO round-trip and
+  fall back to standard TYPO3 session termination on logout.
 - Set `md_saml.saml.sp.x509cert` and `md_saml.saml.sp.privateKey` to the generated files.
   You can either provide the **file path** to the PEM file (recommended):<br>
   `md_saml.saml.sp.x509cert: '/path/to/sp.crt'`<br>

@@ -69,6 +69,13 @@ class SettingsService implements SingletonInterface
         $extSettings['saml']['sp']['assertionConsumerService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['assertionConsumerService']['url'];
         $extSettings['saml']['sp']['singleLogoutService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['singleLogoutService']['url'];
 
+        // Strip SLO endpoints when the IdP does not support SLO.
+        // This prevents settings validation errors in the onelogin library and
+        // ensures that SP metadata does not advertise an SLO endpoint that can
+        // never complete. The SLO middlewares rely on this being absent to skip
+        // the SAML logout and fall back to standard TYPO3 session termination.
+        $extSettings['saml'] = $this->stripSloEndpointsIfUnsupported($extSettings['saml']);
+
         // Resolve cert/key values that contain file paths instead of inline content.
         $extSettings['saml'] = $this->resolveCertValues($extSettings['saml']);
 
@@ -125,6 +132,36 @@ class SettingsService implements SingletonInterface
             $content = preg_replace('/-----END[^-]+-----/', '', $content) ?? $content;
             $samlSettings[$section][$key] = preg_replace('/\s+/', '', $content) ?? $content;
         }
+
+        return $samlSettings;
+    }
+
+    /**
+     * Remove SLO endpoints from the settings when the IdP does not support SLO.
+     *
+     * When idp.singleLogoutService.url is empty the IdP has no SLO endpoint.
+     * Keeping the singleLogoutService keys in this case causes two problems:
+     *
+     *   1. The onelogin/php-saml Settings validator may reject the configuration
+     *      if it finds inconsistent SLO data (URL absent but binding present).
+     *   2. The SP metadata XML would advertise an SLO endpoint that can never
+     *      complete, confusing IdP-side administrators.
+     *
+     * Removing both idp.singleLogoutService and sp.singleLogoutService signals
+     * to the SLO middlewares (via the absent key) that they should skip SAML
+     * logout and fall back to standard TYPO3 session termination.
+     *
+     * @param array<string, mixed> $samlSettings
+     * @return array<string, mixed>
+     */
+    private function stripSloEndpointsIfUnsupported(array $samlSettings): array
+    {
+        if (($samlSettings['idp']['singleLogoutService']['url'] ?? '') !== '') {
+            return $samlSettings;
+        }
+
+        unset($samlSettings['idp']['singleLogoutService']);
+        unset($samlSettings['sp']['singleLogoutService']);
 
         return $samlSettings;
     }
@@ -201,8 +238,9 @@ class SettingsService implements SingletonInterface
                         $overrideSettings = $baseVariant['md_saml'] ?? [];
                         break;
                     }
-                // phpcs:ignore Generic.CodeAnalysis.EmptyStatement
-                } catch (SyntaxError $error) {
+
+                    // phpcs:ignore Generic.CodeAnalysis.EmptyStatement
+                } catch (SyntaxError) {
                     // Silently fail and do not evaluate.
                     // No logger here — Site is currently cached and serialized.
                 }
