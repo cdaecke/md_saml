@@ -181,7 +181,16 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         if ((bool)$context->getPropertyFromAspect('frontend.user', 'isLoggedIn')) {
             $feUser = $request->getAttribute('frontend.user');
             if ($feUser instanceof FrontendUserAuthentication) {
+                // Capture the user ID before logoff() clears the user record.
+                $userId = (int)($feUser->user['uid'] ?? 0);
                 $feUser->logoff();
+
+                // Clear the SAML session fields so that if the user later logs in
+                // via the standard TYPO3 login, a stale md_saml_source=1 does not
+                // cause SlsFrontendSloInitiatorMiddleware to redirect to the IdP on logout.
+                // This is relevant for IdP-initiated SLO where Part A (SLO initiator) does
+                // not run and the fields would otherwise remain set.
+                $this->clearSamlFields('fe_users', $userId);
             }
         }
     }

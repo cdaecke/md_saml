@@ -152,6 +152,22 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
                 // callback, but that is a no-op once the session is already gone.
                 $userSessionManager->removeSession($session);
 
+                // Clear the SAML session fields so that if the user later logs in
+                // via the standard TYPO3 login, a stale md_saml_source=1 does not
+                // cause SlsFrontendSloInitiatorMiddleware to redirect to the IdP on logout.
+                GeneralUtility::makeInstance(ConnectionPool::class)
+                    ->getConnectionForTable('fe_users')
+                    ->update(
+                        'fe_users',
+                        [
+                            'md_saml_source' => 0,
+                            'md_saml_nameid' => '',
+                            'md_saml_nameid_format' => '',
+                            'md_saml_session_index' => '',
+                        ],
+                        ['uid' => $userId]
+                    );
+
                 // Store the referer as the post-logout redirect target so the user
                 // lands back on the felogin page (now showing the login form).
                 // Use a cookie because ADFS does not preserve custom RelayState.

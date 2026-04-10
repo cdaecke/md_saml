@@ -150,12 +150,21 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             );
 
             if (is_string($sloUrl) && $sloUrl !== '') {
+                // Capture the user ID before terminating the session — logoff()
+                // clears $GLOBALS['BE_USER']->user, making the UID unavailable afterwards.
+                $userId = (int)($GLOBALS['BE_USER']->user['uid'] ?? 0);
+
                 // Terminate the local TYPO3 session immediately — this ensures
                 // the user is logged out of TYPO3 even if the IdP SLO callback
                 // never arrives (e.g. network failure or IdP timeout).
                 // handleSloCallback() will call performLogoff() again, but that
                 // is a no-op once the session is already gone.
                 $this->performLogoff($request);
+
+                // Clear the SAML session fields so that if the user later logs in
+                // via the standard TYPO3 login, a stale md_saml_source=1 does not
+                // cause SlsBackendSamlMiddleware to redirect to the IdP on logout.
+                $this->clearSamlFields('be_users', $userId);
 
                 // Set a short-lived cookie to mark this flow as a BE SLO.
                 // IdPs (e.g. ADFS) do not reliably preserve RelayState, so the

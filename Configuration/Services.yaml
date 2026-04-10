@@ -21,6 +21,17 @@ services:
         identifier: 'md-saml/process-request-token-listener'
         event: TYPO3\CMS\Core\Authentication\Event\BeforeRequestTokenProcessedEvent
 
+  # Clears stale md_saml_* fields (md_saml_source, md_saml_nameid, etc.) when a user
+  # logs in via the standard TYPO3 login instead of SAML. Without this, a user who
+  # previously authenticated via SAML would still have md_saml_source=1 in the database,
+  # causing SlsBackendSamlMiddleware to redirect to the IdP on the next logout — which
+  # would fail because no SAML session exists. Fires for both BE and FE logins.
+  Mediadreams\MdSaml\Authentication\EventListener\ClearSamlFieldsOnNormalLoginListener:
+    tags:
+      - name: event.listener
+        identifier: 'md-saml/clear-saml-fields-on-normal-login'
+        event: TYPO3\CMS\Core\Authentication\Event\AfterUserLoggedInEvent
+
   # Bypasses sudo-mode password verification for SAML-authenticated BE users.
   # Since TYPO3 v13.4.12 (TYPO3-CORE-SA-2025-013) elevated backend actions
   # (e.g. profile edits) require the user to re-enter their password. SAML

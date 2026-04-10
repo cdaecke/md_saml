@@ -473,7 +473,7 @@ class SamlAuthService extends AbstractAuthenticationService
     }
 
     /**
-     * Update a existing frontend/backend user with given data
+     * Update an existing frontend/backend user with given data
      *
      * @param array $localUser
      * @param array $userData

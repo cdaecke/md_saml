@@ -22,6 +22,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
+use TYPO3\CMS\Core\Database\ConnectionPool;
 
 /**
  * Abstract base class for SAML Single Logout Service (SLS) middlewares.
@@ -53,7 +54,8 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
      */
     public function __construct(
         protected SettingsService $settingsService,
-        protected readonly LoggerInterface $logger
+        protected readonly LoggerInterface $logger,
+        protected readonly ConnectionPool $connectionPool
     ) {
     }
 
@@ -101,6 +103,34 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
         }
 
         return $handler->handle($request);
+    }
+
+    /**
+     * Resets all SAML session fields in be_users or fe_users after logout.
+     *
+     * Clears md_saml_source, md_saml_nameid, md_saml_nameid_format, and
+     * md_saml_session_index so that a subsequent standard TYPO3 login does not
+     * leave stale values that would incorrectly trigger a SAML SLO round-trip.
+     *
+     * @param string $table Either 'be_users' or 'fe_users'
+     * @param int $userId The uid of the user record to update
+     */
+    protected function clearSamlFields(string $table, int $userId): void
+    {
+        if ($userId === 0) {
+            return;
+        }
+
+        $this->connectionPool->getConnectionForTable($table)->update(
+            $table,
+            [
+                'md_saml_source' => 0,
+                'md_saml_nameid' => '',
+                'md_saml_nameid_format' => '',
+                'md_saml_session_index' => '',
+            ],
+            ['uid' => $userId]
+        );
     }
 
     /**
