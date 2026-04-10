@@ -1,6 +1,9 @@
-# Backend Single Logout (SP-initiated) — Flow
+# Backend Single Logout — Flow
 
-The diagram shows the SP-initiated SLO flow for a backend user who logged in via SAML.
+This document covers two logout flows for backend users who logged in via SAML:
+
+- **SP-initiated SLO** — the user clicks logout in the TYPO3 backend, TYPO3 sends the first `LogoutRequest` to the IdP.
+- **IdP-initiated SLO** — the IdP sends a `LogoutRequest` directly to the configured `be_users.saml.sp.singleLogoutService.url` without a prior request from TYPO3.
 
 ## IdPs without SLO support
 
@@ -15,7 +18,8 @@ When the user clicks logout in the TYPO3 backend, `SlsBackendSamlMiddleware` int
 Before redirecting to the IdP, the middleware:
 
 1. **Terminates the local TYPO3 backend session immediately** (`BE_USER->logoff()`). This ensures the user is always logged out of TYPO3 even if the IdP SLO callback never arrives — for example due to a network failure, IdP timeout, or an IdP that nominally supports SLO but does not reliably send the callback.
-2. Sets a short-lived `HttpOnly` cookie (`md_saml_slo_context=BE`). This is necessary because ADFS does not preserve a custom `RelayState` from the `LogoutRequest`, so there would otherwise be no way to identify the returning callback as a backend SLO.
+2. **Clears the SAML session fields** (`md_saml_source`, `md_saml_nameid`, `md_saml_nameid_format`, `md_saml_session_index`) in `be_users`. This prevents a subsequent standard TYPO3 login from leaving stale values that would incorrectly trigger a SAML SLO round-trip on the next logout.
+3. Sets a short-lived `HttpOnly` cookie (`md_saml_slo_context=BE`). This is necessary because ADFS does not preserve a custom `RelayState` from the `LogoutRequest`, so there would otherwise be no way to identify the returning callback as a backend SLO.
 
 ## Step 3 — IdP processes the logout
 
@@ -67,4 +71,35 @@ sequenceDiagram
         User->>BE: GET [sitePath]typo3/?loginProvider=...
         BE-->>User: TYPO3 Backend Login
     end
+```
+
+---
+
+## IdP-initiated SLO
+
+In IdP-initiated SLO the IdP sends a `LogoutRequest` directly to the SP without a prior request from TYPO3. This requires `be_users.saml.sp.singleLogoutService.url` to point to a TYPO3 backend URL (e.g. `/typo3/?loginProvider=1648123062&sls`) so that the request arrives in the backend middleware stack.
+
+`SlsBackendSamlMiddleware` detects `?sls` without the `md_saml_slo_context=BE` cookie (which is only set during SP-initiated SLO) and delegates to the `SlsSamlMiddleware` base class. The base class validates the `LogoutRequest`, calls `performLogoff()` to terminate the local session and clear the SAML fields in `be_users`, and lets the onelogin library send a signed `LogoutResponse` back to the IdP via browser redirect.
+
+### Sequence diagram
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant BE as TYPO3 Backend<br/>(BE Middleware Stack)
+    participant IdP
+
+    IdP-->>User: 302 Location: /typo3/?loginProvider=...&sls&SAMLRequest=...
+
+    User->>BE: GET /typo3/?loginProvider=...&sls&SAMLRequest=...
+
+    note over BE: SlsBackendSamlMiddleware<br/>?sls, no md_saml_slo_context=BE cookie<br/>→ parent::process() (SlsSamlMiddleware)
+
+    BE->>BE: Auth::processSLO(stay:true)
+    note over BE: performLogoff() → BE_USER->logoff()<br/>md_saml_* fields cleared in be_users
+
+    BE-->>User: 302 Location: https://idp/...?SAMLResponse=...
+
+    User->>IdP: GET https://idp/...?SAMLResponse=...
+    note over IdP: Processes LogoutResponse
 ```

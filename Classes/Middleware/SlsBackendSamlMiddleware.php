@@ -72,8 +72,19 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         }
 
         $queryParams = $request->getQueryParams();
+
+        // SP-initiated SLO callback (IdP → TYPO3): identified by the context cookie set
+        // during initiateBackendSlo(). Process the SAMLResponse and terminate the session.
         if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'BE') {
             return $this->handleSloCallback($request);
+        }
+
+        // IdP-initiated SLO: the IdP sends a LogoutRequest directly to the BE SLO endpoint
+        // (be_users.saml.sp.singleLogoutService.url) without a prior SP LogoutRequest.
+        // Delegate to the base class which validates the request, calls performLogoff(),
+        // and lets the library send a signed LogoutResponse back to the IdP.
+        if (isset($queryParams['sls'])) {
+            return parent::process($request, $handler);
         }
 
         return $handler->handle($request);
@@ -259,7 +270,9 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
     protected function performLogoff(ServerRequestInterface $request): void
     {
         if (isset($GLOBALS['BE_USER']->user)) {
+            $userId = (int)($GLOBALS['BE_USER']->user['uid'] ?? 0);
             $GLOBALS['BE_USER']->logoff();
+            $this->clearSamlFields('be_users', $userId);
         }
     }
 }

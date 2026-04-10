@@ -19,7 +19,8 @@ Because the request attribute `frontend.user` is not yet populated at this stage
 Before redirecting to the IdP, the middleware:
 
 1. **Terminates the local TYPO3 frontend session immediately** via `UserSessionManager::removeSession()`. This ensures the user is always logged out of TYPO3 even if the IdP SLO callback never arrives — for example due to a network failure, IdP timeout, or an IdP that nominally supports SLO but does not reliably send the callback.
-2. Sets two short-lived `HttpOnly` cookies:
+2. **Clears the SAML session fields** (`md_saml_source`, `md_saml_nameid`, `md_saml_nameid_format`, `md_saml_session_index`) in `fe_users`. This prevents a subsequent standard TYPO3 login from leaving stale values that would incorrectly trigger a SAML SLO round-trip on the next logout.
+3. Sets two short-lived `HttpOnly` cookies:
    - `md_saml_slo_context=FE` — identifies the returning IdP callback as a frontend SLO
    - `md_saml_slo_redirect=<url>` — stores the `Referer` URL so the user can be redirected back to the felogin page after logout
 
