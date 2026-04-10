@@ -1,3 +1,11 @@
+# Version 5.0.2 (2026-04-10)
+
+- [BUGFIX] redirect to correct url after TYPO3 logout when TYPO3 is installed in a subdirectory
+- [BUGFIX] clear all `md_saml_*` fields in the database when logout is performed. This is needed, because the user could later login with standard TYPO3 login and when logging out, it would try to logout an old SAML session.
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.0.1...5.0.2
+
 # Version 5.0.1 (2026-04-09)
 
 - [BUGFIX] make sure, that the BE/FE logout is working even if there is no logout service at the IdPs end or the IdP does not return for some reason.
