@@ -1,3 +1,11 @@
+# Version 5.1.0 (2026-05-05)
+
+- [FEATURE] TYPO3 v14 compatibility (dual v13+v14 support)
+- [BUGFIX] Fix 404 "cHash empty" when returning from IdP on frontend login pages
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.0.2...5.1.0
+
 # Version 5.0.2 (2026-04-10)
 
 - [BUGFIX] redirect to correct url after TYPO3 logout when TYPO3 is installed in a subdirectory
