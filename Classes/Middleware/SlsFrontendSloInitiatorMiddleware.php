@@ -81,52 +81,20 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
             return $handler->handle($request);
         }
 
-        // Read the current FE session directly, before the authentication middleware
-        // processes it. FrontendUserAuthenticator calls FrontendUserAuthentication::start()
-        // which handles logintype=logout (logoff) — so we must act before that runs.
-        $cookieName = trim((string)($GLOBALS['TYPO3_CONF_VARS']['FE']['cookieName'] ?? ''));
-        if ($cookieName === '') {
-            $cookieName = 'fe_typo_user';
-        }
-
-        $userSessionManager = UserSessionManager::create('FE');
-        $session = $userSessionManager->createFromRequestOrAnonymous($request, $cookieName);
-
-        if ($session->isAnonymous()) {
+        $samlSession = $this->resolveSamlFrontendSession($request);
+        if ($samlSession === null) {
             return $handler->handle($request);
         }
 
-        $userId = $session->getUserId();
-        if ($userId === null) {
-            return $handler->handle($request);
-        }
-
-        // Look up the fe_users record to check whether this is a SAML-authenticated user
-        // and to retrieve the NameID / SessionIndex needed for the LogoutRequest.
-        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
-            ->getQueryBuilderForTable('fe_users');
-        $user = $queryBuilder
-            ->select('md_saml_source', 'md_saml_nameid', 'md_saml_session_index', 'md_saml_nameid_format')
-            ->from('fe_users')
-            ->where(
-                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($userId, Connection::PARAM_INT))
-            )
-            ->executeQuery()
-            ->fetchAssociative();
-
-        if ($user === false || (int)$user['md_saml_source'] !== 1) {
-            return $handler->handle($request);
-        }
+        [
+            'userId' => $userId,
+            'user' => $user,
+            'session' => $session,
+            'sessionManager' => $userSessionManager
+        ] = $samlSession;
 
         $extSettings = $this->settingsService->getSettings('FE');
-        if ($extSettings === []) {
-            return $handler->handle($request);
-        }
-
-        // If the IdP has no SLO endpoint (key stripped by SettingsService when
-        // idp.singleLogoutService.url is empty), skip SAML logout entirely and
-        // let felogin perform a normal local logout without notifying the IdP.
-        if (!isset($extSettings['saml']['idp']['singleLogoutService'])) {
+        if ($extSettings === [] || !isset($extSettings['saml']['idp']['singleLogoutService'])) {
             return $handler->handle($request);
         }
 
@@ -194,5 +162,56 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
         }
 
         return $handler->handle($request);
+    }
+
+    /**
+     * Reads the current FE session from the request and looks up the fe_users record.
+     *
+     * Returns an array with keys userId, user, session, and sessionManager when the
+     * current visitor is a SAML-authenticated frontend user (md_saml_source=1).
+     * Returns null for anonymous visitors, non-SAML users, or missing user records.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function resolveSamlFrontendSession(ServerRequestInterface $request): ?array
+    {
+        $cookieName = trim((string)($GLOBALS['TYPO3_CONF_VARS']['FE']['cookieName'] ?? ''));
+        if ($cookieName === '') {
+            $cookieName = 'fe_typo_user';
+        }
+
+        $sessionManager = UserSessionManager::create('FE');
+        $session = $sessionManager->createFromRequestOrAnonymous($request, $cookieName);
+
+        if ($session->isAnonymous()) {
+            return null;
+        }
+
+        $userId = $session->getUserId();
+        if ($userId === null) {
+            return null;
+        }
+
+        $queryBuilder = GeneralUtility::makeInstance(ConnectionPool::class)
+            ->getQueryBuilderForTable('fe_users');
+        $user = $queryBuilder
+            ->select('md_saml_source', 'md_saml_nameid', 'md_saml_session_index', 'md_saml_nameid_format')
+            ->from('fe_users')
+            ->where(
+                $queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($userId, Connection::PARAM_INT))
+            )
+            ->executeQuery()
+            ->fetchAssociative();
+
+        if ($user === false || (int)$user['md_saml_source'] !== 1) {
+            return null;
+        }
+
+        return [
+            'userId' => $userId,
+            'user' => $user,
+            'session' => $session,
+            'sessionManager' => $sessionManager,
+        ];
     }
 }

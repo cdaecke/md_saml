@@ -119,30 +119,12 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
      */
     private function initiateBackendSlo(ServerRequestInterface $request): ?ResponseInterface
     {
-        $routePath = (string)($request->getAttribute('route')?->getPath() ?? '');
-        if (
-            $routePath !== '/logout'
-            || isset($request->getQueryParams()['sls'])
-            || !isset($GLOBALS['BE_USER']->user)
-            || ($GLOBALS['BE_USER']->user['md_saml_source'] ?? 0) !== 1
-        ) {
-            return null;
-        }
-
-        $backendConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('md_saml');
-        if (($backendConfiguration['activateBackendLogin'] ?? '0') !== '1') {
+        if (!$this->isBackendSloEligible($request)) {
             return null;
         }
 
         $extSettings = $this->settingsService->getSettings('BE');
-        if ($extSettings === []) {
-            return null;
-        }
-
-        // If the IdP has no SLO endpoint (key stripped by SettingsService when
-        // idp.singleLogoutService.url is empty), skip SAML logout entirely and
-        // fall through to the standard TYPO3 session termination.
-        if (!isset($extSettings['saml']['idp']['singleLogoutService'])) {
+        if ($extSettings === [] || !isset($extSettings['saml']['idp']['singleLogoutService'])) {
             return null;
         }
 
@@ -268,6 +250,29 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
             'Set-Cookie',
             'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
         );
+    }
+
+    /**
+     * Returns true when the cheap preconditions for a SAML BE SLO are met:
+     * the request targets /typo3/logout, a SAML-authenticated BE user is logged in,
+     * and the backend SAML login is enabled in the extension configuration.
+     * Settings availability and IdP SLO endpoint are checked separately in
+     * initiateBackendSlo() to avoid loading settings on every request.
+     */
+    private function isBackendSloEligible(ServerRequestInterface $request): bool
+    {
+        $routePath = (string)($request->getAttribute('route')?->getPath() ?? '');
+        if (
+            $routePath !== '/logout'
+            || isset($request->getQueryParams()['sls'])
+            || !isset($GLOBALS['BE_USER']->user)
+            || ($GLOBALS['BE_USER']->user['md_saml_source'] ?? 0) !== 1
+        ) {
+            return false;
+        }
+
+        $backendConfiguration = GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('md_saml');
+        return ($backendConfiguration['activateBackendLogin'] ?? '0') === '1';
     }
 
     protected function performLogoff(ServerRequestInterface $request): void

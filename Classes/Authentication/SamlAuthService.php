@@ -245,7 +245,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * @throws ValidationError
      * @throws PropagateResponseException
      */
-    public function getUser()
+    public function getUser(): false|array
     {
         $this->logger->debug(
             'SAML authentification: ' . __METHOD__ . ' begin'
@@ -270,148 +270,164 @@ class SamlAuthService extends AbstractAuthenticationService
 
         // $_REQUEST is intentional here: see comment in inCharge() above.
         if (isset($_REQUEST['acs'])) {
-            $auth = new Auth($this->extSettings['saml']);
-            $auth->processResponse();
-
-            $errors = $auth->getErrors();
-
-            if ($errors !== []) {
-                $errorMessage = $loginType . ' Login-attempt from %s (%s) failed (ext:md_saml). SAML error: %s';
-                $this->writelog(
-                    255,
-                    3,
-                    3,
-                    null,
-                    $errorMessage,
-                    [
-                        $this->authInfo['REMOTE_ADDR'],
-                        $this->authInfo['REMOTE_HOST'],
-                        implode(', ', $errors),
-                    ]
-                );
-
-                $errorMessage = $loginType . ': Login-attempt from {REMOTE_ADDR} ({REMOTE_HOST}) failed (ext:md_saml). '
-                    . 'SAML error: {errors}:' . chr(10) . '{errorDetails}';
-                $this->logger->error(
-                    $errorMessage,
-                    [
-                        'REMOTE_ADDR' => $this->authInfo['REMOTE_ADDR'],
-                        'REMOTE_HOST' => $this->authInfo['REMOTE_HOST'],
-                        'errors' => implode(', ', $errors),
-                        'errorDetails' => $auth->getLastErrorReason(),
-                    ]
-                );
-
-                if ($auth->getSettings()->isDebugActive()) {
-                    $this->logger->debug(
-                        'SAML authentification: {errors}' . chr(10) . '{errorDetails}',
-                        [
-                            'errors' => implode(', ', $errors),
-                            'errorDetails' => $auth->getLastErrorReason(),
-                        ]
-                    );
-                    $body = '<h1>SAML error</h1>'
-                        . '<p>' . htmlentities(implode(', ', $errors), ENT_QUOTES | ENT_HTML5) . '</p>'
-                        . '<p>' . htmlentities((string)$auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
-                    $response = GeneralUtility::makeInstance(ResponseFactoryInterface::class)
-                        ->createResponse()
-                        ->withHeader('Content-Type', 'text/html; charset=utf-8');
-                    $response->getBody()->write($body);
-                    throw new PropagateResponseException($response, 1706128565);
-                }
-
-                if (isset($_POST['RelayState']) && Utils::getSelfURL() !== $_POST['RelayState']) {
-                    // To avoid 'Open Redirect' attacks, before execute the
-                    // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
-                    //$auth->redirectTo($_POST['RelayState']);
-                    $url = Utils::getSelfRoutedURLNoQuery()
-                        . '?loginProvider=' . self::SAML_LOGIN_PROVIDER_ID . '&error=1';
-                    throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
-                }
-
-                return false;
-            }
-
-            $samlAttributes = $auth->getAttributes();
-            $user = $this->getUserArrayForDb($samlAttributes);
-
-            // Store SAML session data needed for SP-initiated SLO (logout).
-            // The onelogin/php-saml library uses $_SESSION for this, but TYPO3
-            // does not use PHP sessions, so we persist it in the user record instead.
-            $user['md_saml_nameid'] = $auth->getNameId() ?? '';
-            $user['md_saml_nameid_format'] = $auth->getNameIdFormat() ?? '';
-            $user['md_saml_session_index'] = $auth->getSessionIndex() ?? '';
-
-            $record = $this->fetchUserRecord($user['username']);
-            if (is_array($record)) {
-                if (
-                    isset($this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
-                    $this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === true
-                ) {
-                    $this->logger->debug(
-                        "Record for user '{username}' found and will be updated.",
-                        [
-                            'username' => $user['username'],
-                        ]
-                    );
-                    return $this->updateUser($record, $user);
-                }
-
-                $this->logger->debug(
-                    "Record for user '{username}' found. Will *not* be updated due to configuration.",
-                    [
-                        'username' => $user['username'],
-                    ]
-                );
-
-                // Always persist SAML session data (NameID, session index) even when
-                // updateIfExist=false, so SP-initiated SLO can read it at logout time.
-                $this->updateUser($record, [
-                    'username' => $user['username'],
-                    'md_saml_nameid' => $user['md_saml_nameid'],
-                    'md_saml_nameid_format' => $user['md_saml_nameid_format'],
-                    'md_saml_session_index' => $user['md_saml_session_index'],
-                ]);
-
-                return $record;
-            }
-
-            if ($this->extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
-                $this->logger->debug(
-                    "*No* record for user '{username}' found, but will be created.",
-                    [
-                        'username' => $user['username'],
-                    ]
-                );
-                return $this->createUser($user);
-            }
-
-            $this->logger->debug(
-                "Record for user '{username}' not found. Will *not* be created due to configuration.",
-                [
-                    'username' => $user['username'],
-                ]
-            );
-        } else {
-            $auth = new Auth($this->extSettings['saml']);
-            // Pass the redirect URL as RelayState to the IdP so it is returned
-            // in the SAMLResponse POST and can be used to restore the redirect
-            // target after the IdP roundtrip (see RelayState handling above).
-            $returnTo = $_POST['redirect_url'] ?? $_POST['referer'] ?? null;
-            // Validate that the redirect target belongs to the same origin before
-            // passing it as RelayState. An attacker could craft a login form POST
-            // with redirect_url=https://evil.com. If null, the library falls back
-            // to the current URL as RelayState.
-            if ($returnTo !== null && !str_starts_with((string)$returnTo, Utils::getSelfURLhost())) {
-                $returnTo = null;
-            }
-
-            $auth->login($returnTo);
+            return $this->processAcsResponse($loginType);
         }
+
+        $auth = new Auth($this->extSettings['saml']);
+
+        // Pass the redirect URL as RelayState to the IdP, so it is returned
+        // in the SAMLResponse POST and can be used to restore the redirect
+        // target after the IdP roundtrip (see RelayState handling above).
+        $returnTo = $_POST['redirect_url'] ?? $_POST['referer'] ?? null;
+        
+        // Validate that the redirect target belongs to the same origin before
+        // passing it as RelayState. An attacker could craft a login form POST
+        // with redirect_url=https://evil.com. If null, the library falls back
+        // to the current URL as RelayState.
+        if ($returnTo !== null && !str_starts_with((string)$returnTo, Utils::getSelfURLhost())) {
+            $returnTo = null;
+        }
+
+        $auth->login($returnTo);
 
         $this->logger->debug(
             'SAML authentification could not authenticate this user.'
         );
+        return false;
+    }
+
+    /**
+     * Processes the SAMLResponse posted to the ACS endpoint, resolves or creates
+     * the local user record, and returns it for TYPO3 authentication.
+     *
+     * @return array<string, mixed>|false
+     * @throws PropagateResponseException
+     */
+    private function processAcsResponse(string $loginType): array|false
+    {
+        $auth = new Auth($this->extSettings['saml']);
+        $auth->processResponse();
+
+        $errors = $auth->getErrors();
+
+        if ($errors !== []) {
+            $errorMessage = $loginType . ' Login-attempt from %s (%s) failed (ext:md_saml). SAML error: %s';
+            $this->writelog(
+                255,
+                3,
+                3,
+                null,
+                $errorMessage,
+                [
+                    $this->authInfo['REMOTE_ADDR'],
+                    $this->authInfo['REMOTE_HOST'],
+                    implode(', ', $errors),
+                ]
+            );
+
+            $errorMessage = $loginType . ': Login-attempt from {REMOTE_ADDR} ({REMOTE_HOST}) failed (ext:md_saml). '
+                . 'SAML error: {errors}:' . chr(10) . '{errorDetails}';
+            $this->logger->error(
+                $errorMessage,
+                [
+                    'REMOTE_ADDR' => $this->authInfo['REMOTE_ADDR'],
+                    'REMOTE_HOST' => $this->authInfo['REMOTE_HOST'],
+                    'errors' => implode(', ', $errors),
+                    'errorDetails' => $auth->getLastErrorReason(),
+                ]
+            );
+
+            if ($auth->getSettings()->isDebugActive()) {
+                $this->logger->debug(
+                    'SAML authentification: {errors}' . chr(10) . '{errorDetails}',
+                    [
+                        'errors' => implode(', ', $errors),
+                        'errorDetails' => $auth->getLastErrorReason(),
+                    ]
+                );
+                $body = '<h1>SAML error</h1>'
+                    . '<p>' . htmlentities(implode(', ', $errors), ENT_QUOTES | ENT_HTML5) . '</p>'
+                    . '<p>' . htmlentities((string)$auth->getLastErrorReason(), ENT_QUOTES | ENT_HTML5) . '</p>';
+                $response = GeneralUtility::makeInstance(ResponseFactoryInterface::class)
+                    ->createResponse()
+                    ->withHeader('Content-Type', 'text/html; charset=utf-8');
+                $response->getBody()->write($body);
+                throw new PropagateResponseException($response, 1706128565);
+            }
+
+            if (isset($_POST['RelayState']) && Utils::getSelfURL() !== $_POST['RelayState']) {
+                // To avoid 'Open Redirect' attacks, before execute the
+                // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
+                //$auth->redirectTo($_POST['RelayState']);
+                $url = Utils::getSelfRoutedURLNoQuery()
+                    . '?loginProvider=' . self::SAML_LOGIN_PROVIDER_ID . '&error=1';
+                throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
+            }
+
+            return false;
+        }
+
+        $samlAttributes = $auth->getAttributes();
+        $user = $this->getUserArrayForDb($samlAttributes);
+
+        // Store SAML session data needed for SP-initiated SLO (logout).
+        // The onelogin/php-saml library uses $_SESSION for this, but TYPO3
+        // does not use PHP sessions, so we persist it in the user record instead.
+        $user['md_saml_nameid'] = $auth->getNameId() ?? '';
+        $user['md_saml_nameid_format'] = $auth->getNameIdFormat() ?? '';
+        $user['md_saml_session_index'] = $auth->getSessionIndex() ?? '';
+
+        $record = $this->fetchUserRecord($user['username']);
+        if (is_array($record)) {
+            if (
+                isset($this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
+                $this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist'] === true
+            ) {
+                $this->logger->debug(
+                    "Record for user '{username}' found and will be updated.",
+                    [
+                        'username' => $user['username'],
+                    ]
+                );
+                return $this->updateUser($record, $user);
+            }
+
+            $this->logger->debug(
+                "Record for user '{username}' found. Will *not* be updated due to configuration.",
+                [
+                    'username' => $user['username'],
+                ]
+            );
+
+            // Always persist SAML session data (NameID, session index) even when
+            // updateIfExist=false, so SP-initiated SLO can read it at logout time.
+            $this->updateUser($record, [
+                'username' => $user['username'],
+                'md_saml_nameid' => $user['md_saml_nameid'],
+                'md_saml_nameid_format' => $user['md_saml_nameid_format'],
+                'md_saml_session_index' => $user['md_saml_session_index'],
+            ]);
+
+            return $record;
+        }
+
+        if ($this->extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
+            $this->logger->debug(
+                "*No* record for user '{username}' found, but will be created.",
+                [
+                    'username' => $user['username'],
+                ]
+            );
+            return $this->createUser($user);
+        }
+
+        $this->logger->debug(
+            "Record for user '{username}' not found. Will *not* be created due to configuration.",
+            [
+                'username' => $user['username'],
+            ]
+        );
+
         return false;
     }
 

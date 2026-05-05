@@ -63,115 +63,131 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
     {
         $this->context = 'FE';
 
-        // After a successful IdP callback (ACS), redirect to the original URL that was
-        // passed as RelayState. felogin cannot do this itself because redirect_url is
-        // not part of the IdP POST-back body — only SAMLResponse and RelayState are.
-        // This middleware runs after FrontendUserAuthenticator, so the user is already
-        // authenticated when we reach this point.
         if (isset($request->getQueryParams()['acs'])) {
-            $response = $handler->handle($request);
-
-            $parsedBody = $request->getParsedBody();
-            $relayState = is_array($parsedBody) ? (string)($parsedBody['RelayState'] ?? '') : '';
-            $feUser = $request->getAttribute('frontend.user');
-
-            if (
-                $relayState !== ''
-                && $feUser instanceof FrontendUserAuthentication
-                && $feUser->user !== null
-                && str_starts_with($relayState, Utils::getSelfURLhost())
-                && !str_starts_with($relayState, Utils::getSelfRoutedURLNoQuery())
-            ) {
-                return new RedirectResponse($relayState, 303);
-            }
-
-            return $response;
+            return $this->handleAcsCallback($request, $handler);
         }
 
         $queryParams = $request->getQueryParams();
+        $sloContext = $request->getCookieParams()['md_saml_slo_context'] ?? '';
 
-        // SLO callback from IdP for a FE-initiated SLO (context cookie = FE).
-        // Processes the SAMLResponse, terminates the local FE session, clears both
-        // cookies, and redirects to the page that originally triggered the logout.
-        if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'FE') {
-            $extSettings = $this->settingsService->getSettings($this->context);
-            if ($extSettings !== []) {
-                try {
-                    $auth = new Auth($extSettings['saml'], true);
-                    // stay=true prevents the library from calling exit() internally.
-                    // retrieveParametersFromServer=true preserves the exact URL encoding
-                    // used by the IdP when computing the redirect-binding signature.
-                    $auth->processSLO(
-                        retrieveParametersFromServer: true,
-                        cbDeleteSession: fn() => $this->performLogoff($request),
-                        stay: true
-                    );
-                    $errors = $auth->getErrors();
-
-                    if ($errors !== []) {
-                        if (in_array('logout_not_success', $errors, true)) {
-                            // IdP returned non-success (e.g. ADFS with Windows Integrated
-                            // Authentication cannot terminate the WIA session via SAML).
-                            // Still terminate the local TYPO3 session so the user is logged out.
-                            $this->performLogoff($request);
-                            $this->logger->warning(
-                                'md_saml: IdP returned non-success status for FE SLO. '
-                                . 'Local TYPO3 session terminated anyway.',
-                                ['errors' => $errors, 'lastErrorReason' => $auth->getLastErrorReason()]
-                            );
-                        } else {
-                            $this->logger->error(
-                                'SAML logout error in SlsFrontendSamlMiddleware',
-                                [
-                                    'context' => $this->context,
-                                    'errors' => $errors,
-                                    'lastErrorReason' => $auth->getLastErrorReason(),
-                                    'exception' => $auth->getLastErrorException(),
-                                ]
-                            );
-                        }
-                    }
-                } catch (Error $e) {
-                    $this->logger->error(
-                        'md_saml: Error processing FE SLO callback.',
-                        ['exception' => $e->getMessage()]
-                    );
-                }
-            }
-
-            // Determine redirect target from the stored cookie (set during initiation).
-            // Accept only same-origin URLs: a relative path starting with a single '/'
-            // or an absolute URL starting with the current host. Protocol-relative URLs
-            // (//evil.com) are explicitly rejected — they start with '/' but browsers
-            // resolve them to an external host, making them an open-redirect vector.
-            $redirectTo = urldecode($request->getCookieParams()['md_saml_slo_redirect'] ?? '');
-            if (
-                $redirectTo === ''
-                || str_starts_with($redirectTo, '//')
-                || (!str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, Utils::getSelfURLhost()))
-            ) {
-                $redirectTo = '/';
-            }
-
-            // Clear both context and redirect cookies, then redirect to the post-logout page.
-            $response = new RedirectResponse($redirectTo, 303);
-            $response = $response->withAddedHeader(
-                'Set-Cookie',
-                'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
-            );
-            return $response->withAddedHeader(
-                'Set-Cookie',
-                'md_saml_slo_redirect=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
-            );
+        if (isset($queryParams['sls']) && $sloContext === 'FE') {
+            return $this->handleFeSloCallback($request);
         }
 
         // Skip SLO processing if this is a BE-initiated SLO callback (identified by cookie).
         // SlsBackendSamlMiddleware (registered before this in the frontend stack) handles it.
-        if (isset($queryParams['sls']) && ($request->getCookieParams()['md_saml_slo_context'] ?? '') === 'BE') {
+        if (isset($queryParams['sls']) && $sloContext === 'BE') {
             return $handler->handle($request);
         }
 
         return parent::process($request, $handler);
+    }
+
+    /**
+     * After a successful ACS callback, redirect to the RelayState URL if it is a
+     * same-origin URL different from the current ACS endpoint. felogin cannot do
+     * this itself because RelayState is not part of its redirect mechanism.
+     */
+    private function handleAcsCallback(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface {
+        $response = $handler->handle($request);
+
+        $parsedBody = $request->getParsedBody();
+        $relayState = is_array($parsedBody) ? (string)($parsedBody['RelayState'] ?? '') : '';
+        $feUser = $request->getAttribute('frontend.user');
+
+        if (
+            $relayState !== ''
+            && $feUser instanceof FrontendUserAuthentication
+            && $feUser->user !== null
+            && str_starts_with($relayState, Utils::getSelfURLhost())
+            && !str_starts_with($relayState, Utils::getSelfRoutedURLNoQuery())
+        ) {
+            return new RedirectResponse($relayState, 303);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Process the SLO callback from the IdP for a FE-initiated logout.
+     *
+     * Validates the SAMLResponse, terminates the local FE session, clears both
+     * SLO cookies, and redirects to the URL stored in md_saml_slo_redirect.
+     */
+    private function handleFeSloCallback(ServerRequestInterface $request): ResponseInterface
+    {
+        $extSettings = $this->settingsService->getSettings($this->context);
+        if ($extSettings !== []) {
+            try {
+                $auth = new Auth($extSettings['saml'], true);
+                // stay=true prevents the library from calling exit() internally.
+                // retrieveParametersFromServer=true preserves the exact URL encoding
+                // used by the IdP when computing the redirect-binding signature.
+                $auth->processSLO(
+                    retrieveParametersFromServer: true,
+                    cbDeleteSession: fn() => $this->performLogoff($request),
+                    stay: true
+                );
+                $errors = $auth->getErrors();
+
+                if ($errors !== []) {
+                    if (in_array('logout_not_success', $errors, true)) {
+                        // IdP returned non-success (e.g. ADFS with Windows Integrated
+                        // Authentication cannot terminate the WIA session via SAML).
+                        // Still terminate the local TYPO3 session so the user is logged out.
+                        $this->performLogoff($request);
+                        $this->logger->warning(
+                            'md_saml: IdP returned non-success status for FE SLO. '
+                            . 'Local TYPO3 session terminated anyway.',
+                            ['errors' => $errors, 'lastErrorReason' => $auth->getLastErrorReason()]
+                        );
+                    } else {
+                        $this->logger->error(
+                            'SAML logout error in SlsFrontendSamlMiddleware',
+                            [
+                                'context' => $this->context,
+                                'errors' => $errors,
+                                'lastErrorReason' => $auth->getLastErrorReason(),
+                                'exception' => $auth->getLastErrorException(),
+                            ]
+                        );
+                    }
+                }
+            } catch (Error $e) {
+                $this->logger->error(
+                    'md_saml: Error processing FE SLO callback.',
+                    ['exception' => $e->getMessage()]
+                );
+            }
+        }
+
+        // Determine redirect target from the stored cookie (set during initiation).
+        // Accept only same-origin URLs: a relative path starting with a single '/'
+        // or an absolute URL starting with the current host. Protocol-relative URLs
+        // (//evil.com) are explicitly rejected — they start with '/' but browsers
+        // resolve them to an external host, making them an open-redirect vector.
+        $redirectTo = urldecode($request->getCookieParams()['md_saml_slo_redirect'] ?? '');
+        if (
+            $redirectTo === ''
+            || str_starts_with($redirectTo, '//')
+            || (!str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, Utils::getSelfURLhost()))
+        ) {
+            $redirectTo = '/';
+        }
+
+        // Clear both context and redirect cookies, then redirect to the post-logout page.
+        $response = new RedirectResponse($redirectTo, 303);
+        $response = $response->withAddedHeader(
+            'Set-Cookie',
+            'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
+        );
+        return $response->withAddedHeader(
+            'Set-Cookie',
+            'md_saml_slo_redirect=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'
+        );
     }
 
     protected function performLogoff(ServerRequestInterface $request): void
