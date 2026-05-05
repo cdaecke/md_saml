@@ -260,7 +260,10 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         // Use NormalizedParams::getSitePath() to respect sub-directory installations
         // (e.g. https://www.domain.com/directory/). Defaults to '/' for root installs.
         $sitePath = $request->getAttribute('normalizedParams')?->getSitePath() ?? '/';
-        $response = new RedirectResponse($sitePath . 'typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID, 303);
+        $response = new RedirectResponse(
+            $sitePath . 'typo3/?loginProvider=' . SamlAuthService::SAML_LOGIN_PROVIDER_ID,
+            303
+        );
         return $response->withAddedHeader(
             'Set-Cookie',
             'md_saml_slo_context=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure'

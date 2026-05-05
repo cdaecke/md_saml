@@ -86,7 +86,10 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
             // instead of reconstructing the query string from $_GET. This preserves the
             // exact URL encoding that the IdP (e.g. ADFS) used when computing the signature,
             // preventing "Signature validation failed" errors caused by encoding differences.
-            $auth->processSLO(retrieveParametersFromServer: true, cbDeleteSession: fn() => $this->performLogoff($request));
+            $auth->processSLO(
+                retrieveParametersFromServer: true,
+                cbDeleteSession: fn() => $this->performLogoff($request)
+            );
             $errors = $auth->getErrors();
 
             if ($errors !== []) {

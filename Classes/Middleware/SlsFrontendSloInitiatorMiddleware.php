@@ -181,10 +181,9 @@ class SlsFrontendSloInitiatorMiddleware implements MiddlewareInterface
                     'Set-Cookie',
                     'md_saml_slo_context=FE; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure'
                 );
-                return $response->withAddedHeader(
-                    'Set-Cookie',
-                    'md_saml_slo_redirect=' . urlencode($redirectAfter) . '; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure'
-                );
+                // @phpcs:ignore Generic.Files.LineLength
+                $cookie = 'md_saml_slo_redirect=' . urlencode($redirectAfter) . '; Path=/; Max-Age=300; HttpOnly; SameSite=Lax; Secure';
+                return $response->withAddedHeader('Set-Cookie', $cookie);
             }
         } catch (Error $error) {
             $this->logger->error(

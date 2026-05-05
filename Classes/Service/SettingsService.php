@@ -56,18 +56,28 @@ class SettingsService implements SingletonInterface
         }
 
         if ($extSettings === []) {
-            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
+            $this->logger->error(
+                'No md_saml config found. Perhaps you did not include'
+                . ' the site set `MdSaml base configuration (ext:md_saml)`.'
+            );
             return [];
         }
 
         // Merge settings according to given context (frontend or backend)
-        $extSettings['saml'] = array_replace_recursive($extSettings['saml'], $extSettings[mb_strtolower($loginType) . '_users']['saml']);
+        $extSettings['saml'] = array_replace_recursive(
+            $extSettings['saml'],
+            $extSettings[mb_strtolower($loginType) . '_users']['saml']
+        );
 
         // Add base url
-        $extSettings['saml']['baseurl'] = $extSettings['mdsamlSpBaseUrl'];
-        $extSettings['saml']['sp']['entityId'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['entityId'];
-        $extSettings['saml']['sp']['assertionConsumerService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['assertionConsumerService']['url'];
-        $extSettings['saml']['sp']['singleLogoutService']['url'] = $extSettings['saml']['baseurl'] . $extSettings['saml']['sp']['singleLogoutService']['url'];
+        $baseUrl = $extSettings['mdsamlSpBaseUrl'];
+        $extSettings['saml']['baseurl'] = $baseUrl;
+        $extSettings['saml']['sp']['entityId']
+            = $baseUrl . $extSettings['saml']['sp']['entityId'];
+        $extSettings['saml']['sp']['assertionConsumerService']['url']
+            = $baseUrl . $extSettings['saml']['sp']['assertionConsumerService']['url'];
+        $extSettings['saml']['sp']['singleLogoutService']['url']
+            = $baseUrl . $extSettings['saml']['sp']['singleLogoutService']['url'];
 
         // Strip SLO endpoints when the IdP does not support SLO.
         // This prevents settings validation errors in the onelogin library and

@@ -261,7 +261,10 @@ class SamlAuthService extends AbstractAuthenticationService
         $loginType = $this->pObj->loginType;
 
         if ($this->extSettings === []) {
-            $this->logger->error('No md_saml config found. Perhaps you did not include the site set `MdSaml base configuration (ext:md_saml)`.');
+            $this->logger->error(
+                'No md_saml config found. Perhaps you did not include'
+                . ' the site set `MdSaml base configuration (ext:md_saml)`.'
+            );
             return false;
         }
 
@@ -321,7 +324,8 @@ class SamlAuthService extends AbstractAuthenticationService
                     // To avoid 'Open Redirect' attacks, before execute the
                     // redirection confirm the value of $_POST['RelayState'] is a // trusted URL.
                     //$auth->redirectTo($_POST['RelayState']);
-                    $url = Utils::getSelfRoutedURLNoQuery() . '?loginProvider=' . self::SAML_LOGIN_PROVIDER_ID . '&error=1';
+                    $url = Utils::getSelfRoutedURLNoQuery()
+                        . '?loginProvider=' . self::SAML_LOGIN_PROVIDER_ID . '&error=1';
                     throw new PropagateResponseException(new RedirectResponse($url, 303), 1706128564);
                 }
 
@@ -443,7 +447,8 @@ class SamlAuthService extends AbstractAuthenticationService
         // Add values from SSO provider
         foreach ($samlAttributes as $attributeName => $attributeValues) {
             if (isset($transformationArr[$attributeName])) {
-                $userArr[$transformationArr[$attributeName]] = count($attributeValues) === 1 ? $attributeValues[0] : $attributeValues;
+                $userArr[$transformationArr[$attributeName]]
+                    = count($attributeValues) === 1 ? $attributeValues[0] : $attributeValues;
             }
         }
 
@@ -462,7 +467,8 @@ class SamlAuthService extends AbstractAuthenticationService
         foreach ($protectedColumns as $col) {
             if (array_key_exists($col, $userArr)) {
                 $this->logger->warning(
-                    'md_saml: Blocked attempt to set protected column {column} via SAML attribute mapping or databaseDefaults.',
+                    'md_saml: Blocked attempt to set protected column {column}'
+                    . ' via SAML attribute mapping or databaseDefaults.',
                     ['column' => $col, 'loginType' => $this->pObj->loginType]
                 );
                 unset($userArr[$col]);
