@@ -121,7 +121,7 @@ return static function (RectorConfig $rectorConfig): void {
     $rectorConfig->ruleWithConfiguration(
         ExtEmConfRector::class,
         [
-            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '13.4.0-13.4.99',
+            ExtEmConfRector::TYPO3_VERSION_CONSTRAINT => '13.4.0-14.3.99',
             ExtEmConfRector::ADDITIONAL_VALUES_TO_BE_REMOVED => [
                 'dependencies',
                 'conflicts',

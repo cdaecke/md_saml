@@ -31,10 +31,10 @@ use TYPO3\CMS\Core\Database\ConnectionPool;
  *
  * Fires for both BE and FE logins (AfterUserLoggedInEvent covers both).
  */
-final class ClearSamlFieldsOnNormalLoginListener
+final readonly class ClearSamlFieldsOnNormalLoginListener
 {
     public function __construct(
-        private readonly ConnectionPool $connectionPool
+        private ConnectionPool $connectionPool
     ) {
     }
 
