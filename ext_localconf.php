@@ -15,6 +15,17 @@ if (($GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['md_saml']['activateBackendLogin'
     ];
 }
 
+// Exclude SAML-specific URL parameters from cHash validation so the ACS and SLO
+// callback URLs (?acs, ?sls) and the login provider identifier (?loginProvider,
+// ?login-provider) never trigger a "cHash empty" 404. These parameters carry no
+// cacheable page content and must pass through to the authentication middleware.
+$GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'] = array_unique(
+    array_merge(
+        (array)($GLOBALS['TYPO3_CONF_VARS']['FE']['cacheHash']['excludedParameters'] ?? []),
+        ['loginProvider', 'login-provider', 'login_status', 'logintype', 'acs', 'sls']
+    )
+);
+
 /**
  * Register the auth service
  */
