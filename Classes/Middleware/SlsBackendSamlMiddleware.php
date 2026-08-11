@@ -20,6 +20,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
+use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Http\RedirectResponse;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
@@ -83,7 +84,11 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         // (be_users.saml.sp.singleLogoutService.url) without a prior SP LogoutRequest.
         // Delegate to the base class which validates the request, calls performLogoff(),
         // and lets the library send a signed LogoutResponse back to the IdP.
-        if (isset($queryParams['sls'])) {
+        // Guarded to a genuine backend request: this middleware also runs in the frontend
+        // stack (see class docblock), where an `sls` request without the
+        // md_saml_slo_context=BE cookie is a frontend SLO callback, not a backend one —
+        // handled by SlsFrontendSamlMiddleware later in the stack.
+        if (isset($queryParams['sls']) && ApplicationType::fromRequest($request)->isBackend()) {
             return parent::process($request, $handler);
         }
 
