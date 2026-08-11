@@ -303,9 +303,9 @@ final class AddGroupChangeUserEventListener {
       if (1) {
           $usergroups = GeneralUtility::intExplode(',', $userData['usergroup']);
           $usergroups[] = $this->adminGroupUid;
-	  // change some data
+          // change some data
           $userData['usergroup'] = implode(',', $usergroups);
-	  // save new data
+          // save new data
           $event->setUserData($userData);
       }
   }

@@ -279,7 +279,7 @@ class SamlAuthService extends AbstractAuthenticationService
         // in the SAMLResponse POST and can be used to restore the redirect
         // target after the IdP roundtrip (see RelayState handling above).
         $returnTo = $_POST['redirect_url'] ?? $_POST['referer'] ?? null;
-        
+
         // Validate that the redirect target belongs to the same origin before
         // passing it as RelayState. An attacker could craft a login form POST
         // with redirect_url=https://evil.com. If null, the library falls back
