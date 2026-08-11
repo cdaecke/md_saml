@@ -1,3 +1,10 @@
+# Version 5.1.1 (2026-08-11)
+
+- [BUGFIX] guard IdP-initiated SLO in SlsBackendSamlMiddleware to backend requests. Thanks to [tobiasschaeferptb](https://github.com/tobiasschaeferptb)!
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.1.0...5.1.1
+
 # Version 5.1.0 (2026-05-05)
 
 - [FEATURE] TYPO3 v14 compatibility (dual v13+v14 support)
