@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Mediadreams\MdSaml\Middleware;
 
+use Mediadreams\MdSaml\Security\SameOriginUrlGuard;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
 use OneLogin\Saml2\LogoutRequest;
@@ -103,13 +104,33 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
             $relayState !== ''
             && $feUser instanceof FrontendUserAuthentication
             && $feUser->user !== null
-            && str_starts_with($relayState, Utils::getSelfURLhost())
-            && !str_starts_with($relayState, Utils::getSelfRoutedURLNoQuery())
+            && $this->isSafeAcsRelayState($relayState)
         ) {
             return new RedirectResponse($relayState, 303);
         }
 
         return $response;
+    }
+
+    /**
+     * A RelayState is only followed when it is same-origin (not an attacker-supplied
+     * external URL) and does not point back at the ACS endpoint itself (which would
+     * redirect-loop back into this same handler).
+     */
+    private function isSafeAcsRelayState(string $relayState): bool
+    {
+        return SameOriginUrlGuard::isSameOrigin($relayState)
+            && !str_starts_with($relayState, Utils::getSelfRoutedURLNoQuery());
+    }
+
+    /**
+     * Accepts only same-origin redirect targets: a relative path starting with a
+     * single '/' or an absolute same-origin URL. Protocol-relative URLs (//evil.com)
+     * are rejected — they start with '/' but browsers resolve them to an external host.
+     */
+    private function isSafeSloRedirectTarget(string $redirectTo): bool
+    {
+        return SameOriginUrlGuard::isSameOriginOrRootRelative($redirectTo);
     }
 
     /**
@@ -166,16 +187,8 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         }
 
         // Determine redirect target from the stored cookie (set during initiation).
-        // Accept only same-origin URLs: a relative path starting with a single '/'
-        // or an absolute URL starting with the current host. Protocol-relative URLs
-        // (//evil.com) are explicitly rejected — they start with '/' but browsers
-        // resolve them to an external host, making them an open-redirect vector.
         $redirectTo = urldecode($request->getCookieParams()['md_saml_slo_redirect'] ?? '');
-        if (
-            $redirectTo === ''
-            || str_starts_with($redirectTo, '//')
-            || (!str_starts_with($redirectTo, '/') && !str_starts_with($redirectTo, Utils::getSelfURLhost()))
-        ) {
+        if (!$this->isSafeSloRedirectTarget($redirectTo)) {
             $redirectTo = '/';
         }
 

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Mediadreams\MdSaml\Authentication;
 
 use Mediadreams\MdSaml\Event\ChangeUserEvent;
+use Mediadreams\MdSaml\Security\SameOriginUrlGuard;
 use Mediadreams\MdSaml\Service\SettingsService;
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
@@ -284,7 +285,7 @@ class SamlAuthService extends AbstractAuthenticationService
         // passing it as RelayState. An attacker could craft a login form POST
         // with redirect_url=https://evil.com. If null, the library falls back
         // to the current URL as RelayState.
-        if ($returnTo !== null && !str_starts_with((string)$returnTo, Utils::getSelfURLhost())) {
+        if ($returnTo !== null && !SameOriginUrlGuard::isSameOrigin((string)$returnTo)) {
             $returnTo = null;
         }
 
