@@ -9,15 +9,15 @@ parameters:
   level: 5
 
   bootstrapFiles:
-    - .Build/vendor/autoload.php
+    - ../../.Build/vendor/autoload.php
 
   paths:
-    - Classes
-    - Configuration
+    - ../../Classes
+    - ../../Configuration
 
   scanDirectories:
-    - Classes
-    - Configuration
+    - ../../Classes
+    - ../../Configuration
 
   type_coverage:
       return_type: 80
