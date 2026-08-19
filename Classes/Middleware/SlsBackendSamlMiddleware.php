@@ -280,7 +280,7 @@ class SlsBackendSamlMiddleware extends SlsSamlMiddleware
         return ($backendConfiguration['activateBackendLogin'] ?? '0') === '1';
     }
 
-    protected function performLogoff(ServerRequestInterface $request): void
+    protected function performLogoff(ServerRequestInterface $request, ?Auth $auth = null): void
     {
         if (isset($GLOBALS['BE_USER']->user)) {
             $userId = (int)($GLOBALS['BE_USER']->user['uid'] ?? 0);

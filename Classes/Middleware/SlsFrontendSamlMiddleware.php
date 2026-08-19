@@ -15,6 +15,7 @@ namespace Mediadreams\MdSaml\Middleware;
 
 use OneLogin\Saml2\Auth;
 use OneLogin\Saml2\Error;
+use OneLogin\Saml2\LogoutRequest;
 use OneLogin\Saml2\Utils;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -190,7 +191,7 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
         );
     }
 
-    protected function performLogoff(ServerRequestInterface $request): void
+    protected function performLogoff(ServerRequestInterface $request, ?Auth $auth = null): void
     {
         $context = GeneralUtility::makeInstance(Context::class);
 
@@ -208,6 +209,64 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
                 // not run and the fields would otherwise remain set.
                 $this->clearSamlFields('fe_users', $userId);
             }
+            return;
+        }
+
+        $this->performNameIdFallbackLogoff($request, $auth);
+    }
+
+    /**
+     * Fallback for IdP-initiated SLO delivered without the fe_typo_user cookie.
+     * Some IdPs (e.g. ADFS) propagate a global logout to each SP via a hidden
+     * iframe instead of a top-level browser redirect; an iframe navigation is
+     * cross-site for SameSite=Lax cookie purposes, so the cookie is never sent
+     * and no live FrontendUserAuthentication is available. Resolves the session
+     * to terminate from the NameID in the already-validated LogoutRequest instead.
+     *
+     * Security: the NameID is only trusted when the LogoutRequest carried a
+     * Signature parameter that LogoutRequest::isValid() actually verified. With
+     * this project's default `wantMessagesSigned: false`, isValid() returns true
+     * for a completely unsigned request as long as no Signature parameter is
+     * present at all — without this check, an unsigned forged request would let
+     * an unauthenticated caller terminate an arbitrary named user's sessions.
+     */
+    private function performNameIdFallbackLogoff(ServerRequestInterface $request, ?Auth $auth): void
+    {
+        if ($auth === null || !isset($request->getQueryParams()['Signature'])) {
+            return;
+        }
+
+        $xml = $auth->getLastRequestXML();
+        if ($xml === null) {
+            return;
+        }
+
+        try {
+            $nameId = LogoutRequest::getNameId($xml, $auth->getSettings()->getSPkey());
+        } catch (\Exception $e) {
+            $this->logger->error(
+                'md_saml: Could not extract NameID from IdP-initiated LogoutRequest.',
+                ['exception' => $e->getMessage()]
+            );
+            return;
+        }
+
+        if ($nameId === '') {
+            return;
+        }
+
+        $queryBuilder = $this->connectionPool->getQueryBuilderForTable('fe_users');
+        $uid = $queryBuilder
+            ->select('uid')
+            ->from('fe_users')
+            ->where($queryBuilder->expr()->eq('md_saml_nameid', $queryBuilder->createNamedParameter($nameId)))
+            ->executeQuery()
+            ->fetchOne();
+        $userId = $uid !== false ? (int)$uid : 0;
+
+        if ($userId > 0) {
+            $this->connectionPool->getConnectionForTable('fe_sessions')->delete('fe_sessions', ['ses_userid' => $userId]);
+            $this->clearSamlFields('fe_users', $userId);
         }
     }
 }

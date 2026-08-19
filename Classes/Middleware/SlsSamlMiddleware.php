@@ -88,7 +88,7 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
             // preventing "Signature validation failed" errors caused by encoding differences.
             $auth->processSLO(
                 retrieveParametersFromServer: true,
-                cbDeleteSession: fn() => $this->performLogoff($request)
+                cbDeleteSession: fn() => $this->performLogoff($request, $auth)
             );
             $errors = $auth->getErrors();
 
@@ -140,6 +140,12 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
      * Terminates the local TYPO3 session for the current user.
      * Called by processSLO() as the cbDeleteSession callback once the
      * IdP's LogoutRequest has been successfully validated.
+     *
+     * $auth is the Auth instance that ran processSLO(), available so that
+     * implementations can inspect the validated LogoutRequest (e.g. to resolve
+     * the session from its NameID when no session cookie is present). Null when
+     * performLogoff() is called outside of a processSLO() callback (SP-initiated
+     * logout initiation, where the live session is already known).
      */
-    abstract protected function performLogoff(ServerRequestInterface $request): void;
+    abstract protected function performLogoff(ServerRequestInterface $request, ?Auth $auth = null): void;
 }
