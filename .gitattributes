@@ -7,4 +7,5 @@
 /.phpstorm.meta.php export-ignore
 /Build/ export-ignore
 /package.json export-ignore
+/Tests/ export-ignore
 /tools/ export-ignore binary

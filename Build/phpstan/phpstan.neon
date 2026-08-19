@@ -14,10 +14,12 @@ parameters:
   paths:
     - ../../Classes
     - ../../Configuration
+    - ../../Tests
 
   scanDirectories:
     - ../../Classes
     - ../../Configuration
+    - ../../Tests
 
   type_coverage:
       return_type: 80

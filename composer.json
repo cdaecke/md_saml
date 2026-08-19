@@ -40,11 +40,17 @@
 		"tomasvotruba/type-coverage": "^2.0",
 		"typo3/cms-fluid": "^13.4",
 		"typo3/cms-frontend": "^13.4",
-		"typo3/coding-standards": "^0.8"
+		"typo3/coding-standards": "^0.8",
+		"typo3/testing-framework": "^9.6"
 	},
 	"autoload": {
 		"psr-4": {
 			"Mediadreams\\MdSaml\\": "Classes"
+		}
+	},
+	"autoload-dev": {
+		"psr-4": {
+			"Mediadreams\\MdSaml\\Tests\\": "Tests/"
 		}
 	},
 	"config": {
@@ -89,9 +95,9 @@
 			"@check:php:stan"
 		],
 		"check:php:cs-fixer": "php-cs-fixer fix --config ./Build/php-cs-fixer/config.php -v --dry-run --diff",
-		"check:php:lint": "find .*.php *.php Classes Configuration -name '*.php' -print0 | xargs -r -0 -n 1 -P 4 php -l",
+		"check:php:lint": "find .*.php *.php Classes Configuration Tests -name '*.php' -print0 | xargs -r -0 -n 1 -P 4 php -l",
 		"check:php:rector": "./.Build/bin/rector process --config ./Build/rector/config.php --dry-run",
-		"check:php:sniff": "phpcs --standard=Build/phpcs/phpcs.xml Classes Configuration",
+		"check:php:sniff": "phpcs --standard=Build/phpcs/phpcs.xml Classes Configuration Tests",
 		"check:php:stan": "phpstan analyse --no-progress -c Build/phpstan/phpstan.neon",
 		"check:static": [
 			"@check:composer:normalize",
@@ -101,6 +107,12 @@
 			"@check:php:sniff",
 			"@check:php:stan"
 		],
+		"check:tests:create-directories": "mkdir -p .Build/Web/typo3temp/var/tests",
+		"check:tests:functional": [
+			"@check:tests:create-directories",
+			"phpunit -c Build/phpunit/FunctionalTests.xml"
+		],
+		"check:tests:unit": "phpunit -c Build/phpunit/UnitTests.xml",
 		"deploy:ter": [
 			"@build:cleanup",
 			"@deploy:ter:setup",
@@ -121,13 +133,14 @@
 		],
 		"fix:php:cs-fixer": "php-cs-fixer fix --config ./Build/php-cs-fixer/config.php",
 		"fix:php:rector": "./.Build/bin/rector process --config ./Build/rector/config.php",
-		"fix:php:sniff": "phpcbf --standard=Build/phpcs/phpcs.xml Classes Configuration",
+		"fix:php:sniff": "phpcbf --standard=Build/phpcs/phpcs.xml Classes Configuration Tests",
 		"phpstan:baseline": ".Build/bin/phpstan analyse -c Build/phpstan/phpstan.neon --generate-baseline --allow-empty-baseline",
 		"prepare-release": [
 			"rm -rf .Build",
 			"rm -rf .ddev",
 			"rm -rf .github",
 			"rm -rf Build",
+			"rm -rf Tests",
 			"rm .editorconfig",
 			"rm .gitattributes",
 			"rm .gitignore"
@@ -143,6 +156,9 @@
 		"check:php:sniff": "Checks the code style with PHP_CodeSniffer (PHPCS).",
 		"check:php:stan": "Checks the PHP types using PHPStan.",
 		"check:static": "Runs all static code checks (syntax, style, types).",
+		"check:tests:create-directories": "Creates the directories required to smoothely run the functional tests.",
+		"check:tests:functional": "Runs the functional tests.",
+		"check:tests:unit": "Runs the unit tests.",
 		"fix:composer:normalize": "Normalizes composer.json file content.",
 		"fix:php": "Runs all fixers for the PHP code.",
 		"fix:php:cs-fixer": "Fixes the code style with PHP-CS-Fixer.",
