@@ -20,3 +20,8 @@ parameters:
       return_type: 80
       param_type: 80
       property_type: 95
+      # Not enforced: class constants can't be natively typed until PHP 8.3
+      # (project supports >=8.2), and the message-text-based baseline entry
+      # for this rule breaks every time the project-wide constant count
+      # changes anywhere, which makes baselining it a maintenance trap.
+      constant_type: 0

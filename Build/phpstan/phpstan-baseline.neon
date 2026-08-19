@@ -7,12 +7,6 @@ parameters:
 			path: ../../Classes/Authentication/SamlAuthService.php
 
 		-
-			message: '#^Out of 5 possible constant types, only 0 \- 0\.0 %% actually have it\. Add more constant types to get over 99 %%$#'
-			identifier: typeCoverage.constantTypeCoverage
-			count: 5
-			path: ../../Classes/Authentication/SamlAuthService.php
-
-		-
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
