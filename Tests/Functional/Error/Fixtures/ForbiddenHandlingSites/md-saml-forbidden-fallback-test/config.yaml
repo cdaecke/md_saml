@@ -1,0 +1,17 @@
+rootPageId: 1
+base: 'https://typo3-forbidden-fallback-test.local/'
+languages:
+  -
+    title: English
+    enabled: true
+    languageId: 0
+    base: /
+    typo3Language: default
+    locale: en_US.UTF-8
+    iso-639-1: en
+    navigationTitle: ''
+    hreflang: en-US
+    direction: ''
+    flag: us
+# Deliberately no settings.md_saml section: ForbiddenHandlingTest uses this site
+# to cover the fallback path when SAML is not configured for the current site.
