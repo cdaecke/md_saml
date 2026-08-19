@@ -1,0 +1,3 @@
+"be_users"
+,"uid","pid","username","password","admin","disable","deleted","md_saml_source","md_saml_nameid","md_saml_nameid_format","md_saml_session_index"
+,1,0,"slo-callback-be-user","$argon2i$v=19$m=65536,t=16,p=1$abcdefghijklmnop$abcdefghijklmnopqrstuvwx","0",0,0,1,"slo-callback-be-nameid","urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified","slo-callback-be-session-index"
