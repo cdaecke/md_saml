@@ -54,44 +54,32 @@ return static function (RectorConfig $rectorConfig): void {
     // FQN classes are not imported by default. If you don't do it manually after every Rector run, enable it by:
     $rectorConfig->importNames();
 
-    // Disable parallel otherwise non php file processing is not working i.e. typoscript or flexform
-    $rectorConfig->disableParallel();
-
     // this will not import root namespace classes, like \DateTime or \Exception
     $rectorConfig->importShortClasses(false);
 
     // Define your target version which you want to support
     $rectorConfig->phpVersion(PhpVersion::PHP_82);
 
-    // If you only want to process one/some TYPO3 extension(s), you can specify its path(s) here.
+    // Scope processing to the actual extension source instead of the whole
+    // repository (getcwd()). This mirrors ext:tea's Build/rector/config.php
+    // and avoids Rector enumerating .Build/, Build/, .ddev/ etc. on every run.
     // If you use the option --config change __DIR__ to getcwd()
     $rectorConfig->paths([
-        getcwd() . '/',
+        getcwd() . '/Classes',
+        getcwd() . '/Configuration',
+        getcwd() . '/Tests',
+        getcwd() . '/ext_emconf.php',
+        getcwd() . '/ext_localconf.php',
     ]);
 
     // If you use the option --config change __DIR__ to getcwd()
     $rectorConfig->skip([
-        getcwd() . '/**/Resources/',
-
         // @see https://github.com/sabbelasichon/typo3-rector/issues/2536
         getcwd() . '/**/Configuration/ExtensionBuilder/*',
-        // We skip those directories on purpose as there might be node_modules or similar
-        // that include typescript which would result in false positive processing
-        getcwd() . '/**/Resources/**/node_modules/*',
-        getcwd() . '/**/Resources/**/NodeModules/*',
-        getcwd() . '/**/Resources/**/BowerComponents/*',
-        getcwd() . '/**/Resources/**/bower_components/*',
-        getcwd() . '/**/Resources/**/build/*',
-        getcwd() . '/vendor/*',
-        getcwd() . '/Build/*',
-        getcwd() . '/public/*',
-        getcwd() . '/.github/*',
-        getcwd() . '/.Build/*',
 
         NameImportingPostRector::class => [
             'ext_localconf.php',
             'ext_emconf.php',
-            'ext_tables.php',
             getcwd() . '/**/Configuration/*',
             getcwd() . '/**/Configuration/**/*.php',
         ],

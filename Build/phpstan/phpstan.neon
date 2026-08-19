@@ -16,11 +16,6 @@ parameters:
     - ../../Configuration
     - ../../Tests
 
-  scanDirectories:
-    - ../../Classes
-    - ../../Configuration
-    - ../../Tests
-
   type_coverage:
       return_type: 80
       param_type: 80

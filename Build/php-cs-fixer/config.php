@@ -1,6 +1,12 @@
 <?php
 
-$config = \TYPO3\CodingStandards\CsFixerConfig::create();
+declare(strict_types=1);
+
+use PhpCsFixer\Runner\Parallel\ParallelConfigFactory;
+use TYPO3\CodingStandards\CsFixerConfig;
+
+$config = CsFixerConfig::create();
+$config->setParallelConfig(ParallelConfigFactory::detect());
 $config->addRules([
     // Disabled because it conflicts with PHPCS (PEAR brace rules require
     // opening and closing braces on their own lines).
