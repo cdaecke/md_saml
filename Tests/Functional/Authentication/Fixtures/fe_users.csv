@@ -1,0 +1,4 @@
+"fe_users"
+,"uid","pid","username","password","email","disable","deleted","tstamp","crdate"
+,1,10,"existing-user","old-hash","old@example.com",0,0,1000,1000
+,2,20,"other-pid-user","old-hash","other@example.com",0,0,1000,1000
