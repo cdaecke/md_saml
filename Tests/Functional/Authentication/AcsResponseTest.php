@@ -18,13 +18,15 @@ use Mediadreams\MdSaml\Service\SettingsService;
 use Mediadreams\MdSaml\Tests\Fixtures\Saml\PostBindingResponseSigner;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
+use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
 
 /**
  * Full ACS roundtrip: a signed SAMLResponse (HTTP-POST binding) is validated by
- * onelogin/php-saml and turned into a fe_users record by
+ * onelogin/php-saml and turned into a fe_users/be_users record by
  * SamlAuthService::getUser() -> processAcsResponse().
  */
 #[CoversClass(SamlAuthService::class)]
@@ -40,11 +42,19 @@ final class AcsResponseTest extends FunctionalTestCase
 
     private const HOST = 'typo3-acs-test.local';
 
-    private const DESTINATION = 'https://typo3-acs-test.local/index.php?loginProvider=1648123062&acs';
-
     private const ISSUER = 'https://idp.example.com/entity';
 
-    private const AUDIENCE = 'https://typo3-acs-test.local/base-entity';
+    private const FE_PATH = '/index.php?loginProvider=1648123062&acs';
+
+    private const FE_DESTINATION = 'https://typo3-acs-test.local/index.php?loginProvider=1648123062&acs';
+
+    private const FE_AUDIENCE = 'https://typo3-acs-test.local/base-entity';
+
+    private const BE_PATH = '/typo3/index.php?loginProvider=1648123062&acs';
+
+    private const BE_DESTINATION = 'https://typo3-acs-test.local/typo3/index.php?loginProvider=1648123062&acs';
+
+    private const BE_AUDIENCE = 'https://typo3-acs-test.local/typo3/index.php?loginProvider=1648123062&mdsamlmetadata';
 
     /**
      * @var array<string, mixed>
@@ -56,6 +66,7 @@ final class AcsResponseTest extends FunctionalTestCase
         parent::setUp();
 
         $this->importCSVDataSet(__DIR__ . '/Fixtures/fe_users_saml_acs.csv');
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/be_users_saml_acs.csv');
         $this->serverBackup = $_SERVER;
     }
 
@@ -69,54 +80,67 @@ final class AcsResponseTest extends FunctionalTestCase
     /**
      * @param array<string, string> $attributes
      */
-    private function callGetUser(string $nameId, array $attributes): false|array
-    {
-        $responseB64 = PostBindingResponseSigner::signedResponse(
-            self::DESTINATION,
+    private function buildSignedResponse(
+        string $destination,
+        string $audience,
+        string $nameId,
+        array $attributes
+    ): string {
+        return PostBindingResponseSigner::signedResponse(
+            $destination,
             self::ISSUER,
-            self::AUDIENCE,
+            $audience,
             $nameId,
             'session-index-acs',
             $attributes
         );
+    }
 
+    private function setAcsRequestGlobals(string $path, string $responseB64): void
+    {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = self::HOST;
         $_SERVER['SERVER_PORT'] = '443';
         $_SERVER['SCRIPT_NAME'] = '/index.php';
-        $_SERVER['REQUEST_URI'] = '/index.php?loginProvider=1648123062&acs';
-        $_SERVER['QUERY_STRING'] = 'loginProvider=1648123062&acs';
+        $_SERVER['REQUEST_URI'] = $path;
+        $_SERVER['QUERY_STRING'] = ltrim((string)strstr($path, '?'), '?');
         $_GET = ['loginProvider' => '1648123062', 'acs' => ''];
         $_REQUEST = $_GET;
         $_POST = ['SAMLResponse' => $responseB64];
         GeneralUtility::flushInternalRuntimeCaches();
+    }
+
+    private function buildPObj(string $loginType): AbstractUserAuthentication
+    {
+        $class = $loginType === 'BE' ? BackendUserAuthentication::class : FrontendUserAuthentication::class;
+        $pObj = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+        $pObj->loginType = $loginType;
+        return $pObj;
+    }
+
+    private function callGetUser(string $loginType, string $table, string $path, string $responseB64): false|array
+    {
+        $this->setAcsRequestGlobals($path, $responseB64);
 
         $subject = GeneralUtility::makeInstance(SamlAuthService::class);
         $subject->db_user = [
-            'table' => 'fe_users',
+            'table' => $table,
             'username_column' => 'username',
             'enable_clause' => '',
         ];
         $subject->authInfo = [
-            'loginType' => 'FE',
-            'db_user' => ['table' => 'fe_users'],
+            'loginType' => $loginType,
+            'db_user' => ['table' => $table],
             'REMOTE_ADDR' => '127.0.0.1',
             'REMOTE_HOST' => '',
         ];
-
-        $user = (new \ReflectionClass(FrontendUserAuthentication::class))->newInstanceWithoutConstructor();
-        $user->loginType = 'FE';
-
-        $subject->pObj = $user;
+        $subject->pObj = $this->buildPObj($loginType);
 
         $subjectReflection = new \ReflectionClass(SamlAuthService::class);
+        $subjectReflection->getProperty('useAuthService')->setValue($subject, true);
 
-        $useAuthServiceProperty = $subjectReflection->getProperty('useAuthService');
-        $useAuthServiceProperty->setValue($subject, true);
-
-        $settings = GeneralUtility::makeInstance(SettingsService::class)->getSettings('FE');
-        $extSettingsProperty = $subjectReflection->getProperty('extSettings');
-        $extSettingsProperty->setValue($subject, $settings);
+        $settings = GeneralUtility::makeInstance(SettingsService::class)->getSettings($loginType);
+        $subjectReflection->getProperty('extSettings')->setValue($subject, $settings);
 
         return $subject->getUser();
     }
@@ -124,7 +148,13 @@ final class AcsResponseTest extends FunctionalTestCase
     #[Test]
     public function createsNewFeUserFromSignedAcsResponse(): void
     {
-        $result = $this->callGetUser('new-acs-nameid', ['mail' => 'new-acs-user']);
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'new-acs-nameid',
+            ['mail' => 'new-acs-user']
+        );
+        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, $responseB64);
 
         self::assertIsArray($result);
         self::assertSame('new-acs-user', $result['username']);
@@ -136,7 +166,13 @@ final class AcsResponseTest extends FunctionalTestCase
     #[Test]
     public function updatesExistingFeUserFromSignedAcsResponse(): void
     {
-        $result = $this->callGetUser('existing-acs-nameid', ['mail' => 'existing-acs-user']);
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'existing-acs-nameid',
+            ['mail' => 'existing-acs-user']
+        );
+        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, $responseB64);
 
         self::assertIsArray($result);
         self::assertSame(1, (int)$result['uid']);
@@ -145,14 +181,49 @@ final class AcsResponseTest extends FunctionalTestCase
     }
 
     #[Test]
+    public function createsNewBeUserFromSignedAcsResponse(): void
+    {
+        $responseB64 = $this->buildSignedResponse(
+            self::BE_DESTINATION,
+            self::BE_AUDIENCE,
+            'new-be-acs-nameid',
+            ['mail' => 'new-be-acs-user']
+        );
+        $result = $this->callGetUser('BE', 'be_users', self::BE_PATH, $responseB64);
+
+        self::assertIsArray($result);
+        self::assertSame('new-be-acs-user', $result['username']);
+        self::assertSame(1, (int)$result['md_saml_source']);
+        self::assertSame('new-be-acs-nameid', $result['md_saml_nameid']);
+        // The 'admin' attribute is never in the response here, but this locks in that
+        // a BE user created via SAML is never implicitly made an admin.
+        self::assertSame(0, (int)$result['admin']);
+    }
+
+    #[Test]
+    public function updatesExistingBeUserFromSignedAcsResponse(): void
+    {
+        $responseB64 = $this->buildSignedResponse(
+            self::BE_DESTINATION,
+            self::BE_AUDIENCE,
+            'existing-be-acs-nameid',
+            ['mail' => 'existing-be-acs-user']
+        );
+        $result = $this->callGetUser('BE', 'be_users', self::BE_PATH, $responseB64);
+
+        self::assertIsArray($result);
+        self::assertSame(1, (int)$result['uid']);
+        self::assertSame('existing-be-acs-user', $result['username']);
+        self::assertSame('existing-be-acs-nameid', $result['md_saml_nameid']);
+    }
+
+    #[Test]
     public function rejectsResponseWithTamperedSignature(): void
     {
-        $responseB64 = PostBindingResponseSigner::signedResponse(
-            self::DESTINATION,
-            self::ISSUER,
-            self::AUDIENCE,
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
             'tampered-nameid',
-            'session-index-acs',
             ['mail' => 'tampered-user']
         );
         // Flip the attribute value after signing, invalidating the assertion's digest.
@@ -160,41 +231,9 @@ final class AcsResponseTest extends FunctionalTestCase
         self::assertIsString($decoded);
         $tampered = str_replace('tampered-user', 'attacker-user', $decoded);
 
-        $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = self::HOST;
-        $_SERVER['SERVER_PORT'] = '443';
-        $_SERVER['SCRIPT_NAME'] = '/index.php';
-        $_SERVER['REQUEST_URI'] = '/index.php?loginProvider=1648123062&acs';
-        $_SERVER['QUERY_STRING'] = 'loginProvider=1648123062&acs';
-        $_GET = ['loginProvider' => '1648123062', 'acs' => ''];
-        $_REQUEST = $_GET;
-        $_POST = ['SAMLResponse' => base64_encode($tampered)];
-        GeneralUtility::flushInternalRuntimeCaches();
+        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, base64_encode($tampered));
 
-        $subject = GeneralUtility::makeInstance(SamlAuthService::class);
-        $subject->db_user = [
-            'table' => 'fe_users',
-            'username_column' => 'username',
-            'enable_clause' => '',
-        ];
-        $subject->authInfo = [
-            'loginType' => 'FE',
-            'db_user' => ['table' => 'fe_users'],
-            'REMOTE_ADDR' => '127.0.0.1',
-            'REMOTE_HOST' => '',
-        ];
-
-        $user = (new \ReflectionClass(FrontendUserAuthentication::class))->newInstanceWithoutConstructor();
-        $user->loginType = 'FE';
-
-        $subject->pObj = $user;
-
-        $subjectReflection = new \ReflectionClass(SamlAuthService::class);
-        $subjectReflection->getProperty('useAuthService')->setValue($subject, true);
-        $settings = GeneralUtility::makeInstance(SettingsService::class)->getSettings('FE');
-        $subjectReflection->getProperty('extSettings')->setValue($subject, $settings);
-
-        self::assertFalse($subject->getUser());
+        self::assertFalse($result);
 
         $queryBuilder = $this->getConnectionPool()->getQueryBuilderForTable('fe_users');
         $count = $queryBuilder->count('uid')
