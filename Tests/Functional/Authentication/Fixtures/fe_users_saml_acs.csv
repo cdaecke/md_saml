@@ -1,0 +1,3 @@
+"fe_users"
+,"uid","pid","username","password","email","disable","deleted","tstamp","crdate"
+,1,0,"existing-acs-user","old-hash","old@example.com",0,0,1000,1000
