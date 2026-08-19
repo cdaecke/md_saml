@@ -17,13 +17,21 @@ use Mediadreams\MdSaml\Middleware\SlsFrontendSamlMiddleware;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use TYPO3\CMS\Core\Http\Response;
+use TYPO3\CMS\Core\Http\ServerRequest;
+use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
 /**
- * Covers only the open-redirect guards. The boundary logic itself (what counts
- * as "same origin") is exhaustively tested in SameOriginUrlGuardTest — these
- * tests just confirm the middleware wires that guard in correctly and applies
- * its own extra rule (ACS RelayState must not loop back to the ACS route itself).
+ * Covers the open-redirect guards and the ACS-callback RelayState redirect they
+ * gate. The boundary logic itself (what counts as "same origin") is exhaustively
+ * tested in SameOriginUrlGuardTest — these tests confirm the middleware wires
+ * that guard in correctly, applies its own extra rule (ACS RelayState must not
+ * loop back to the ACS route itself), and only redirects when a frontend user
+ * actually ended up logged in.
  */
 #[CoversClass(SlsFrontendSamlMiddleware::class)]
 final class SlsFrontendSamlMiddlewareTest extends UnitTestCase
@@ -115,5 +123,117 @@ final class SlsFrontendSamlMiddlewareTest extends UnitTestCase
     public function isSafeSloRedirectTargetDelegatesToTheSameOriginGuard(string $redirectTo, bool $expected): void
     {
         self::assertSame($expected, $this->isSafeSloRedirectTarget($redirectTo));
+    }
+
+    private function nextHandler(): RequestHandlerInterface
+    {
+        return new class () implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                $response = new Response();
+                $response->getBody()->write('NEXT-HANDLER-CALLED');
+                return $response;
+            }
+        };
+    }
+
+    /**
+     * @param array<string, string> $queryParams
+     * @param array<string, string> $parsedBody
+     */
+    private function buildAcsRequest(
+        array $queryParams,
+        array $parsedBody,
+        ?FrontendUserAuthentication $feUser
+    ): ServerRequestInterface {
+        $request = (new ServerRequest('http://typo3.example.com/index.php?loginProvider=1648123062&acs=1', 'POST'))
+            ->withQueryParams($queryParams)
+            ->withParsedBody($parsedBody);
+
+        return $feUser instanceof FrontendUserAuthentication
+            ? $request->withAttribute('frontend.user', $feUser)
+            : $request;
+    }
+
+    /**
+     * @param array<string, mixed>|null $user
+     */
+    private function feUser(?array $user): FrontendUserAuthentication
+    {
+        $feUser = (new \ReflectionClass(FrontendUserAuthentication::class))->newInstanceWithoutConstructor();
+        $feUser->user = $user;
+
+        return $feUser;
+    }
+
+    #[Test]
+    public function redirectsToRelayStateWhenSafeAndAFrontendUserIsLoggedIn(): void
+    {
+        $request = $this->buildAcsRequest(
+            ['loginProvider' => '1648123062', 'acs' => '1'],
+            ['RelayState' => 'http://typo3.example.com/some/other/page'],
+            $this->feUser(['uid' => 1])
+        );
+
+        $response = $this->subject->process($request, $this->nextHandler());
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame('http://typo3.example.com/some/other/page', $response->getHeaderLine('Location'));
+    }
+
+    #[Test]
+    public function passesThroughWhenRelayStateIsMissing(): void
+    {
+        $request = $this->buildAcsRequest(
+            ['loginProvider' => '1648123062', 'acs' => '1'],
+            [],
+            $this->feUser(['uid' => 1])
+        );
+
+        $response = $this->subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+    }
+
+    #[Test]
+    public function passesThroughWhenNoFrontendUserAttributeIsPresent(): void
+    {
+        $request = $this->buildAcsRequest(
+            ['loginProvider' => '1648123062', 'acs' => '1'],
+            ['RelayState' => 'http://typo3.example.com/some/other/page'],
+            null
+        );
+
+        $response = $this->subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+    }
+
+    #[Test]
+    public function passesThroughWhenFrontendUserIsNotLoggedIn(): void
+    {
+        $request = $this->buildAcsRequest(
+            ['loginProvider' => '1648123062', 'acs' => '1'],
+            ['RelayState' => 'http://typo3.example.com/some/other/page'],
+            $this->feUser(null)
+        );
+
+        $response = $this->subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+    }
+
+    #[Test]
+    public function passesThroughWhenRelayStateIsAnExternalHost(): void
+    {
+        $request = $this->buildAcsRequest(
+            ['loginProvider' => '1648123062', 'acs' => '1'],
+            ['RelayState' => 'https://evil.com'],
+            $this->feUser(['uid' => 1])
+        );
+
+        $response = $this->subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
     }
 }
