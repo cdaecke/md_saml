@@ -1,0 +1,7 @@
+"fe_users"
+,"uid","pid","username","password","disable","deleted","md_saml_source","md_saml_nameid","md_saml_nameid_format","md_saml_session_index"
+,1,0,"saml-user","hash",0,0,1,"test-nameid-value","urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified","session-index-1"
+
+"fe_sessions"
+,"ses_id","ses_iplock","ses_userid","ses_tstamp","ses_permanent"
+,"fesession1234567890abcdef1234567890abcdef","[DISABLED]",1,1000,0

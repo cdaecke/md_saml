@@ -1,0 +1,73 @@
+rootPageId: 1
+base: 'https://typo3-slo-test.local/'
+languages:
+  -
+    title: English
+    enabled: true
+    languageId: 0
+    base: /
+    typo3Language: default
+    locale: en_US.UTF-8
+    iso-639-1: en
+    navigationTitle: ''
+    hreflang: en-US
+    direction: ''
+    flag: us
+settings:
+  md_saml:
+    mdsamlSpBaseUrl: 'https://typo3-slo-test.local'
+    publicMetadata: false
+
+    fe_users:
+      active: true
+      saml:
+        sp:
+          entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
+          assertionConsumerService:
+            url: '/login/?loginProvider=1648123062&acs'
+      createIfNotExist: true
+      updateIfExist: true
+      transformationArr:
+        username: 'mail'
+
+    be_users:
+      saml:
+        sp:
+          entityId: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+          assertionConsumerService:
+            url: '/typo3/index.php?loginProvider=1648123062&acs'
+      createIfNotExist: true
+      updateIfExist: true
+      transformationArr:
+        username: 'mail'
+
+    saml:
+      strict: true
+      debug: false
+      baseurl: ''
+      sp:
+        entityId: '/base-entity'
+        assertionConsumerService:
+          url: '/base-acs'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+        singleLogoutService:
+          url: '/index.php?loginProvider=1648123062&sls'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+        NameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        x509cert: ''
+        privateKey: ''
+      idp:
+        entityId: 'https://idp.example.com/entity'
+        singleSignOnService:
+          url: 'https://idp.example.com/sso'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+        # Intentionally no singleLogoutService.url: onelogin/php-saml's Auth::processSLO()
+        # unconditionally calls Utils::redirect() to send the LogoutResponse back to the
+        # IdP, which does `header(); exit();` whenever it has a URL to redirect to (the
+        # production code path never passes stay=true). That exit() would kill the whole
+        # PHPUnit process, not just the test. Leaving the response URL unconfigured makes
+        # that redirect throw a clean, catchable exception instead — after
+        # cbDeleteSession (the code under test here) has already run. This test is
+        # therefore scoped to the NameID-fallback session termination, not the response
+        # sent back to the IdP.
+        x509cert: 'EXT:md_saml/Tests/Fixtures/Saml/idp.crt'
