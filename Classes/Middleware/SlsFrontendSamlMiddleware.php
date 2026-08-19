@@ -209,6 +209,7 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
                 // not run and the fields would otherwise remain set.
                 $this->clearSamlFields('fe_users', $userId);
             }
+
             return;
         }
 
@@ -232,7 +233,7 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
      */
     private function performNameIdFallbackLogoff(ServerRequestInterface $request, ?Auth $auth): void
     {
-        if ($auth === null || !isset($request->getQueryParams()['Signature'])) {
+        if (!$auth instanceof Auth || !isset($request->getQueryParams()['Signature'])) {
             return;
         }
 
@@ -243,10 +244,10 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
 
         try {
             $nameId = LogoutRequest::getNameId($xml, $auth->getSettings()->getSPkey());
-        } catch (\Exception $e) {
+        } catch (\Exception $exception) {
             $this->logger->error(
                 'md_saml: Could not extract NameID from IdP-initiated LogoutRequest.',
-                ['exception' => $e->getMessage()]
+                ['exception' => $exception->getMessage()]
             );
             return;
         }

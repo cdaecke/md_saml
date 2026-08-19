@@ -239,7 +239,7 @@ class SamlAuthService extends AbstractAuthenticationService
      * Get user data
      * Is called to get additional information after login.
      *
-     * @return array|false|void
+     * @return array|false
      * @throws Error
      * @throws InvalidPasswordHashException
      * @throws ValidationError
@@ -288,12 +288,13 @@ class SamlAuthService extends AbstractAuthenticationService
             $returnTo = null;
         }
 
-        $auth->login($returnTo);
-
         $this->logger->debug(
             'SAML authentification could not authenticate this user.'
         );
-        return false;
+
+        // login() redirects to the IdP and terminates the request; it only
+        // returns when $stay=true, which is not the case here.
+        $auth->login($returnTo);
     }
 
     /**
