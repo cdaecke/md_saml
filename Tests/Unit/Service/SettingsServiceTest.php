@@ -189,5 +189,5 @@ final class SettingsServiceTest extends UnitTestCase
     // conditions) is intentionally not covered here: GeneralUtility::makeInstance()
     // cannot build the ExpressionLanguage Resolver's dependencies (ProviderConfigurationLoader)
     // without the full compiled DI container, which the bare unit test bootstrap does not
-    // provide. That coverage belongs in a functional test instead.
+    // provide. See Tests/Functional/Service/SettingsServiceTest.php for that coverage.
 }
