@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\TestingFramework\Core\Functional\FunctionalTestCase;
@@ -96,7 +97,7 @@ final class AcsResponseTest extends FunctionalTestCase
         );
     }
 
-    private function setAcsRequestGlobals(string $path, string $responseB64): void
+    private function setAcsRequestGlobals(string $path, string $responseB64, ?string $relayState = null): void
     {
         $_SERVER['HTTPS'] = 'on';
         $_SERVER['HTTP_HOST'] = self::HOST;
@@ -106,7 +107,9 @@ final class AcsResponseTest extends FunctionalTestCase
         $_SERVER['QUERY_STRING'] = ltrim((string)strstr($path, '?'), '?');
         $_GET = ['loginProvider' => '1648123062', 'acs' => ''];
         $_REQUEST = $_GET;
-        $_POST = ['SAMLResponse' => $responseB64];
+        $_POST = $relayState !== null
+            ? ['SAMLResponse' => $responseB64, 'RelayState' => $relayState]
+            : ['SAMLResponse' => $responseB64];
         GeneralUtility::flushInternalRuntimeCaches();
     }
 
@@ -118,9 +121,19 @@ final class AcsResponseTest extends FunctionalTestCase
         return $pObj;
     }
 
-    private function callGetUser(string $loginType, string $table, string $path, string $responseB64): false|array
-    {
-        $this->setAcsRequestGlobals($path, $responseB64);
+    /**
+     * @param array<string, mixed> $samlSettingsOverride Merged into extSettings['saml'],
+     *   e.g. ['debug' => true], without touching the shared site fixture on disk.
+     */
+    private function callGetUser(
+        string $loginType,
+        string $table,
+        string $path,
+        string $responseB64,
+        ?string $relayState = null,
+        array $samlSettingsOverride = []
+    ): false|array {
+        $this->setAcsRequestGlobals($path, $responseB64, $relayState);
 
         $subject = GeneralUtility::makeInstance(SamlAuthService::class);
         $subject->db_user = [
@@ -140,9 +153,22 @@ final class AcsResponseTest extends FunctionalTestCase
         $subjectReflection->getProperty('useAuthService')->setValue($subject, true);
 
         $settings = GeneralUtility::makeInstance(SettingsService::class)->getSettings($loginType);
+        $settings['saml'] = array_merge($settings['saml'], $samlSettingsOverride);
         $subjectReflection->getProperty('extSettings')->setValue($subject, $settings);
 
         return $subject->getUser();
+    }
+
+    private function tamperedResponse(string $destination, string $audience, string $nameId, string $mail): string
+    {
+        $responseB64 = $this->buildSignedResponse($destination, $audience, $nameId, ['mail' => $mail]);
+        $decoded = base64_decode($responseB64, true);
+        self::assertIsString($decoded);
+
+        // Flip the attribute value after signing, invalidating the assertion's digest.
+        $tampered = str_replace($mail, 'attacker-' . $mail, $decoded);
+
+        return base64_encode($tampered);
     }
 
     #[Test]
@@ -220,18 +246,14 @@ final class AcsResponseTest extends FunctionalTestCase
     #[Test]
     public function rejectsResponseWithTamperedSignature(): void
     {
-        $responseB64 = $this->buildSignedResponse(
+        $responseB64 = $this->tamperedResponse(
             self::FE_DESTINATION,
             self::FE_AUDIENCE,
             'tampered-nameid',
-            ['mail' => 'tampered-user']
+            'tampered-user'
         );
-        // Flip the attribute value after signing, invalidating the assertion's digest.
-        $decoded = base64_decode($responseB64, true);
-        self::assertIsString($decoded);
-        $tampered = str_replace('tampered-user', 'attacker-user', $decoded);
 
-        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, base64_encode($tampered));
+        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, $responseB64);
 
         self::assertFalse($result);
 
@@ -245,5 +267,78 @@ final class AcsResponseTest extends FunctionalTestCase
             ->executeQuery()
             ->fetchOne();
         self::assertSame(0, (int)$count);
+    }
+
+    #[Test]
+    public function redirectsToErrorPageWhenRelayStateIsPresentAndDoesNotMatchTheAcsUrl(): void
+    {
+        $responseB64 = $this->tamperedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'error-relay-nameid',
+            'error-relay-user'
+        );
+
+        try {
+            $this->callGetUser(
+                'FE',
+                'fe_users',
+                self::FE_PATH,
+                $responseB64,
+                relayState: 'https://typo3-acs-test.local/original-page'
+            );
+            self::fail('Expected a PropagateResponseException to be thrown.');
+        } catch (PropagateResponseException $propagateResponseException) {
+            $response = $propagateResponseException->getResponse();
+            self::assertSame(303, $response->getStatusCode());
+            self::assertSame(
+                'https://typo3-acs-test.local/index.php?loginProvider=1648123062&error=1',
+                $response->getHeaderLine('Location')
+            );
+        }
+    }
+
+    #[Test]
+    public function returnsFalseWithoutRedirectingWhenRelayStateMatchesTheAcsUrlItself(): void
+    {
+        // RelayState equal to the current ACS URL means the IdP looped back without
+        // ever restoring a real return target — redirecting there would just loop.
+        $responseB64 = $this->tamperedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'error-self-nameid',
+            'error-self-user'
+        );
+
+        $result = $this->callGetUser('FE', 'fe_users', self::FE_PATH, $responseB64, relayState: self::FE_DESTINATION);
+
+        self::assertFalse($result);
+    }
+
+    #[Test]
+    public function returnsDebugErrorPageWhenDebugModeIsActiveRegardlessOfRelayState(): void
+    {
+        $responseB64 = $this->tamperedResponse(self::FE_DESTINATION, self::FE_AUDIENCE, 'debug-nameid', 'debug-user');
+
+        // In debug mode, onelogin/php-saml itself echoes the raw exception message
+        // straight to output (Response::isValid()) in addition to what md_saml
+        // returns as the PropagateResponseException body — expected, not a leak.
+        $this->expectOutputString('Reference validation failed');
+
+        try {
+            $this->callGetUser(
+                'FE',
+                'fe_users',
+                self::FE_PATH,
+                $responseB64,
+                relayState: 'https://typo3-acs-test.local/original-page',
+                samlSettingsOverride: ['debug' => true]
+            );
+            self::fail('Expected a PropagateResponseException to be thrown.');
+        } catch (PropagateResponseException $propagateResponseException) {
+            $response = $propagateResponseException->getResponse();
+            self::assertStringContainsString('text/html', $response->getHeaderLine('Content-Type'));
+            self::assertStringContainsString('SAML error', (string)$response->getBody());
+        }
     }
 }
