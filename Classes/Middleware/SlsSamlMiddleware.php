@@ -23,6 +23,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use TYPO3\CMS\Core\Database\ConnectionPool;
+use TYPO3\CMS\Core\Http\RedirectResponse;
 
 /**
  * Abstract base class for SAML Single Logout Service (SLS) middlewares.
@@ -86,9 +87,13 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
             // instead of reconstructing the query string from $_GET. This preserves the
             // exact URL encoding that the IdP (e.g. ADFS) used when computing the signature,
             // preventing "Signature validation failed" errors caused by encoding differences.
-            $auth->processSLO(
+            // stay=true prevents the library from calling exit() internally when it sends
+            // the LogoutResponse back to the IdP; we issue a clean PSR-7 RedirectResponse
+            // instead, keeping the response within TYPO3's own middleware lifecycle.
+            $responseUrl = $auth->processSLO(
                 retrieveParametersFromServer: true,
-                cbDeleteSession: fn() => $this->performLogoff($request, $auth)
+                cbDeleteSession: fn() => $this->performLogoff($request, $auth),
+                stay: true
             );
             $errors = $auth->getErrors();
 
@@ -102,6 +107,8 @@ abstract class SlsSamlMiddleware implements MiddlewareInterface
                         'exception' => $auth->getLastErrorException(),
                     ]
                 );
+            } elseif (is_string($responseUrl) && $responseUrl !== '') {
+                return new RedirectResponse($responseUrl, 302);
             }
         }
 

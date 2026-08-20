@@ -293,9 +293,15 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification could not authenticate this user.'
         );
 
-        // login() redirects to the IdP and terminates the request; it only
-        // returns when $stay=true, which is not the case here.
-        $auth->login($returnTo);
+        // stay=true prevents the library from calling exit() internally and
+        // returns the IdP redirect URL instead, so we can issue a clean
+        // PSR-7 RedirectResponse without disrupting the TYPO3 lifecycle.
+        $loginUrl = $auth->login($returnTo, stay: true);
+        if (is_string($loginUrl) && $loginUrl !== '') {
+            throw new PropagateResponseException(new RedirectResponse($loginUrl, 302), 1706128566);
+        }
+
+        return false;
     }
 
     /**

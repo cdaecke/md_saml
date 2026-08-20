@@ -1,5 +1,5 @@
 rootPageId: 1
-base: 'https://typo3-be-idp-slo-test.local/'
+base: 'https://typo3-be-idp-slo-valid-response-test.local/'
 languages:
   -
     title: English
@@ -15,7 +15,7 @@ languages:
     flag: us
 settings:
   md_saml:
-    mdsamlSpBaseUrl: 'https://typo3-be-idp-slo-test.local'
+    mdsamlSpBaseUrl: 'https://typo3-be-idp-slo-valid-response-test.local'
     publicMetadata: false
 
     fe_users:
@@ -61,13 +61,11 @@ settings:
         singleSignOnService:
           url: 'https://idp.example.com/sso'
           binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
-        # Intentionally no singleLogoutService.url: Utils::redirect() asserts the
-        # target URL is a string before building the redirect, so leaving this
-        # unconfigured makes it throw a clean, catchable AssertionError instead —
-        # after cbDeleteSession (the code under test here) has already run. This
-        # site is deliberately scoped to the incoming LogoutRequest validation and
-        # local session termination, not the LogoutResponse sent back to the IdP;
-        # see md-saml-be-idp-slo-valid-response-test for the full round-trip
-        # (SlsSamlMiddleware::process() uses stay: true, so a configured response
-        # URL no longer risks a real header()+exit()).
+        # A fully configured SLO endpoint, unlike md-saml-be-idp-slo-test: now that
+        # SlsSamlMiddleware::process() passes stay: true to Auth::processSLO(), the
+        # LogoutResponse-to-IdP leg returns a URL instead of calling header()+exit(),
+        # so the full round-trip can be observed safely here.
+        singleLogoutService:
+          url: 'https://idp.example.com/slo-response'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
         x509cert: 'EXT:md_saml/Tests/Fixtures/Saml/idp.crt'

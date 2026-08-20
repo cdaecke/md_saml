@@ -10,6 +10,12 @@ parameters:
 			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
 			identifier: function.alreadyNarrowedType
 			count: 1
+			path: ../../Classes/Authentication/SamlAuthService.php
+
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
 			path: ../../Classes/Error/ForbiddenHandling.php
 
 		-
@@ -43,7 +49,7 @@ parameters:
 			path: ../../Classes/Middleware/SlsFrontendSloInitiatorMiddleware.php
 
 		-
-			message: '#^Unreachable statement \- code above always terminates\.$#'
-			identifier: deadCode.unreachable
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
 			count: 1
 			path: ../../Classes/Middleware/SlsSamlMiddleware.php

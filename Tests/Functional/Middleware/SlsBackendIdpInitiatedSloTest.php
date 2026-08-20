@@ -51,6 +51,10 @@ final class SlsBackendIdpInitiatedSloTest extends FunctionalTestCase
 
     private const DESTINATION = 'https://typo3-be-idp-slo-test.local/typo3/index.php';
 
+    private const VALID_RESPONSE_HOST = 'typo3-be-idp-slo-valid-response-test.local';
+
+    private const VALID_RESPONSE_DESTINATION = 'https://typo3-be-idp-slo-valid-response-test.local/typo3/index.php';
+
     private const ISSUER = 'https://idp.example.com/entity';
 
     private const NAME_ID = 'idp-slo-be-nameid';
@@ -67,13 +71,16 @@ final class SlsBackendIdpInitiatedSloTest extends FunctionalTestCase
     /**
      * @param array<string, string> $samlQueryParams
      */
-    private function buildRequest(array $samlQueryParams): ServerRequestInterface
-    {
+    private function buildRequest(
+        array $samlQueryParams,
+        string $host = self::HOST,
+        string $destination = self::DESTINATION
+    ): ServerRequestInterface {
         $queryParams = array_merge(['sls' => '1'], $samlQueryParams);
         $queryString = http_build_query($queryParams, '', '&', PHP_QUERY_RFC3986);
 
         $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = self::HOST;
+        $_SERVER['HTTP_HOST'] = $host;
         $_SERVER['SERVER_PORT'] = '443';
         $_SERVER['SCRIPT_NAME'] = '/typo3/index.php';
         $_SERVER['REQUEST_URI'] = '/typo3/index.php?' . $queryString;
@@ -81,7 +88,7 @@ final class SlsBackendIdpInitiatedSloTest extends FunctionalTestCase
         $_GET = $queryParams;
         GeneralUtility::flushInternalRuntimeCaches();
 
-        $uri = self::DESTINATION . '?' . $queryString;
+        $uri = $destination . '?' . $queryString;
         return (new ServerRequest($uri, 'GET'))
             ->withQueryParams($queryParams)
             ->withAttribute('applicationType', SystemEnvironmentBuilder::REQUESTTYPE_BE);
@@ -201,5 +208,45 @@ final class SlsBackendIdpInitiatedSloTest extends FunctionalTestCase
         $user = $this->getBeUser();
         self::assertSame(1, (int)$user['md_saml_source']);
         self::assertSame(self::NAME_ID, $user['md_saml_nameid']);
+    }
+
+    /**
+     * With a fully configured IdP response URL (md-saml-be-idp-slo-valid-response-test),
+     * the full round-trip is observable: SlsSamlMiddleware::process() passes stay: true
+     * to Auth::processSLO(), so the LogoutResponse-to-IdP leg returns a URL instead of
+     * calling header()+exit(), and the middleware wraps it in a real RedirectResponse.
+     */
+    #[Test]
+    public function terminatesLocalBackendSessionAndRedirectsToIdpWithSignedLogoutResponse(): void
+    {
+        $this->setUpBackendUser(self::USER_ID);
+        self::assertTrue($this->beSessionExists());
+
+        $signed = RedirectBindingSigner::signedLogoutRequest(
+            self::VALID_RESPONSE_DESTINATION,
+            self::ISSUER,
+            self::NAME_ID
+        );
+        $request = $this->buildRequest(
+            [
+                'SAMLRequest' => $signed['SAMLRequest'],
+                'SigAlg' => $signed['SigAlg'],
+                'Signature' => $signed['Signature'],
+            ],
+            self::VALID_RESPONSE_HOST,
+            self::VALID_RESPONSE_DESTINATION
+        );
+
+        $subject = GeneralUtility::makeInstance(SlsBackendSamlMiddleware::class);
+        $response = $subject->process($request, $this->nextHandler());
+
+        self::assertSame(302, $response->getStatusCode());
+        self::assertStringStartsWith('https://idp.example.com/slo-response', $response->getHeaderLine('Location'));
+        self::assertStringContainsString('SAMLResponse=', $response->getHeaderLine('Location'));
+
+        self::assertFalse($this->beSessionExists());
+        $user = $this->getBeUser();
+        self::assertSame(0, (int)$user['md_saml_source']);
+        self::assertSame('', $user['md_saml_nameid']);
     }
 }

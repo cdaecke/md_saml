@@ -22,6 +22,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\NullLogger;
 use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
+use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
 
@@ -51,6 +52,16 @@ final class SamlAuthServiceTest extends UnitTestCase
      */
     private array $extensionConfigurationBackup;
 
+    /**
+     * @var array<string, mixed>
+     */
+    private array $serverBackup;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $postBackup;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -63,12 +74,16 @@ final class SamlAuthServiceTest extends UnitTestCase
 
         $this->requestBackup = $_REQUEST;
         $this->extensionConfigurationBackup = $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['md_saml'] ?? [];
+        $this->serverBackup = $_SERVER;
+        $this->postBackup = $_POST;
     }
 
     protected function tearDown(): void
     {
         $_REQUEST = $this->requestBackup;
         $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['md_saml'] = $this->extensionConfigurationBackup;
+        $_SERVER = $this->serverBackup;
+        $_POST = $this->postBackup;
 
         parent::tearDown();
     }
@@ -553,30 +568,104 @@ final class SamlAuthServiceTest extends UnitTestCase
     }
 
     /**
+     * A minimal-but-valid onelogin/php-saml settings array: unlike
+     * samlSettingsWithInvalidIdpSsoUrl(), the IdP SSO URL and certificate here
+     * are well-formed enough for Auth::login() to actually succeed and return
+     * a redirect URL (with stay: true) instead of throwing during settings
+     * validation.
+     */
+    private function samlSettingsWithValidIdpSsoUrl(): array
+    {
+        return [
+            'strict' => true,
+            'debug' => false,
+            'baseurl' => '',
+            'sp' => [
+                'entityId' => '/base-entity',
+                'assertionConsumerService' => [
+                    'url' => 'https://typo3-testing.local/base-acs',
+                    'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                ],
+                'NameIDFormat' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+                'x509cert' => '',
+                'privateKey' => '',
+            ],
+            'idp' => [
+                'entityId' => 'https://idp.example.com/entity',
+                'singleSignOnService' => [
+                    'url' => 'https://idp.example.com/sso',
+                    'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                ],
+                // Presence is all that's checked at this point (strict mode
+                // requires an IdP cert to be configured at all); its content is
+                // never used here since no response is being validated.
+                'x509cert' => 'MIIDXTCCAkWgAwIBAgIJAJC1HiIAZAiIMA0GCSqGSIb3DQEBBQUAMEUxCzAJBgNVBAYTAkFV'
+                    . 'MRMwEQYDVQQIEwpTb21lLVN0YXRlMSEwHwYDVQQKExhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQ=',
+            ],
+        ];
+    }
+
+    /**
      * getUser()'s login-initiation branch (no ?acs present) ends in
-     * Auth::login(), which — unlike the ACS-error and SLO-callback paths
-     * elsewhere in this codebase — the onelogin/php-saml library always
-     * completes with a raw header()+exit(), even when the redirect target is
-     * perfectly valid; there is no $stay=true equivalent wired up here. That
-     * exit() cannot be observed or intercepted in-process: PHPUnit's process
-     * isolation only reports a result if the child process reaches its own
-     * result-serialization code after the test body returns, which a real
-     * exit() prevents, and no function-mocking extension (uopz/runkit) is
-     * available in this environment to stub it out.
-     *
-     * This test instead uses a deliberately invalid IdP SSO URL so that
-     * onelogin's own settings validation throws from inside the Auth
-     * constructor — before Auth::login() is even called. That is the
-     * furthest point reachable without triggering the real exit(). Note this
-     * only proves getUser() proceeds past both early-return guards
+     * Auth::login(). SamlAuthService now calls it with stay: true and wraps
+     * the returned URL in a PropagateResponseException, matching the pattern
+     * already used for the ACS-error and SLO-callback paths elsewhere in this
+     * codebase — so unlike an earlier version of this test, the actual
+     * redirect (and the RelayState computed from $_POST['redirect_url'] via
+     * SameOriginUrlGuard) is directly observable here.
+     */
+    #[Test]
+    public function getUserRedirectsToIdpWithSameOriginRedirectUrlAsRelayState(): void
+    {
+        unset($_REQUEST['acs']);
+        $_SERVER['HTTP_HOST'] = 'typo3-testing.local';
+        $_SERVER['HTTPS'] = 'on';
+        $_POST['redirect_url'] = 'https://typo3-testing.local/my-page';
+
+        $service = $this->buildGetUserSubject(true, 'FE', ['saml' => $this->samlSettingsWithValidIdpSsoUrl()]);
+
+        try {
+            $service->getUser();
+            self::fail('Expected a PropagateResponseException to be thrown.');
+        } catch (PropagateResponseException $propagateResponseException) {
+            $response = $propagateResponseException->getResponse();
+            self::assertSame(302, $response->getStatusCode());
+            $location = $response->getHeaderLine('Location');
+            self::assertStringStartsWith('https://idp.example.com/sso', $location);
+            self::assertStringContainsString(
+                'RelayState=' . urlencode('https://typo3-testing.local/my-page'),
+                $location
+            );
+        }
+    }
+
+    #[Test]
+    public function getUserRedirectsToIdpWithoutAttackerControlledRelayStateForCrossOriginRedirectUrl(): void
+    {
+        unset($_REQUEST['acs']);
+        $_SERVER['HTTP_HOST'] = 'typo3-testing.local';
+        $_SERVER['HTTPS'] = 'on';
+        $_POST['redirect_url'] = 'https://evil.com/phish';
+
+        $service = $this->buildGetUserSubject(true, 'FE', ['saml' => $this->samlSettingsWithValidIdpSsoUrl()]);
+
+        try {
+            $service->getUser();
+            self::fail('Expected a PropagateResponseException to be thrown.');
+        } catch (PropagateResponseException $propagateResponseException) {
+            $location = $propagateResponseException->getResponse()->getHeaderLine('Location');
+            self::assertStringNotContainsString('evil.com', $location);
+        }
+    }
+
+    /**
+     * This test only proves getUser() proceeds past both early-return guards
      * (useAuthService, extSettings === []) into SAML-library integration; it
      * cannot additionally distinguish this from the processAcsResponse()
      * branch, since that method's very first line is the same
      * `new Auth($this->extSettings['saml'])` call and therefore fails
      * identically for the same reason — the acs/no-acs branch selection
-     * itself is exercised end-to-end by AcsResponseTest instead. The
-     * RelayState/SameOriginUrlGuard computation that follows in the real
-     * code is exercised in isolation by SameOriginUrlGuardTest.
+     * itself is exercised end-to-end by AcsResponseTest instead.
      */
     #[Test]
     public function getUserProceedsToSamlLibraryIntegrationWhenInChargeAndNoAcsParameterIsPresent(): void
