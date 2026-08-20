@@ -15,6 +15,7 @@ namespace Mediadreams\MdSaml\Tests\Unit\Authentication;
 
 use Mediadreams\MdSaml\Authentication\SamlAuthService;
 use Mediadreams\MdSaml\Service\SettingsService;
+use OneLogin\Saml2\Error;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -476,5 +477,116 @@ final class SamlAuthServiceTest extends UnitTestCase
         $this->callInitAuth($service, 'getUserFE', 'fe_users', 'FE');
 
         self::assertFalse($this->getUseAuthService($service));
+    }
+
+    /**
+     * A structurally valid onelogin/php-saml settings array (mirrors the
+     * AcsSites functional-test fixture), except for a deliberately invalid IdP
+     * SSO URL — used to make getUser()'s login-initiation branch fail loudly
+     * and *before* reaching the point of no return, instead of silently
+     * succeeding into an unrecoverable exit() (see the class-level docblock
+     * on getUserAttemptsIdpRedirectWhenInChargeAndNoAcsParameterIsPresent()).
+     */
+    private function samlSettingsWithInvalidIdpSsoUrl(): array
+    {
+        return [
+            'strict' => true,
+            'debug' => false,
+            'baseurl' => '',
+            'sp' => [
+                'entityId' => '/base-entity',
+                'assertionConsumerService' => [
+                    'url' => 'https://typo3-testing.local/base-acs',
+                    'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST',
+                ],
+                'singleLogoutService' => [
+                    'url' => 'https://typo3-testing.local/index.php?loginProvider=1648123062&sls',
+                    'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                ],
+                'NameIDFormat' => 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified',
+                'x509cert' => '',
+                'privateKey' => '',
+            ],
+            'idp' => [
+                'entityId' => 'https://idp.example.com/entity',
+                'singleSignOnService' => [
+                    // Fails onelogin's own FILTER_VALIDATE_URL settings check
+                    // (idp_sso_url_invalid), thrown from the Auth constructor
+                    // itself — i.e. before Auth::login() is ever reached.
+                    'url' => 'not-a-valid-url',
+                    'binding' => 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect',
+                ],
+            ],
+        ];
+    }
+
+    private function buildGetUserSubject(bool $useAuthService, string $loginType, array $extSettings): SamlAuthService
+    {
+        $service = (new \ReflectionClass(SamlAuthService::class))->newInstanceWithoutConstructor();
+        $service->setLogger(new NullLogger());
+        $service->pObj = $this->buildPObj($loginType);
+
+        (new \ReflectionClass(SamlAuthService::class))
+            ->getProperty('useAuthService')
+            ->setValue($service, $useAuthService);
+        (new \ReflectionClass(SamlAuthService::class))
+            ->getProperty('extSettings')
+            ->setValue($service, $extSettings);
+
+        return $service;
+    }
+
+    #[Test]
+    public function getUserReturnsFalseWhenNotInCharge(): void
+    {
+        $service = $this->buildGetUserSubject(false, 'FE', []);
+
+        self::assertFalse($service->getUser());
+    }
+
+    #[Test]
+    public function getUserReturnsFalseWhenNoSamlConfigIsFound(): void
+    {
+        $service = $this->buildGetUserSubject(true, 'FE', []);
+
+        self::assertFalse($service->getUser());
+    }
+
+    /**
+     * getUser()'s login-initiation branch (no ?acs present) ends in
+     * Auth::login(), which — unlike the ACS-error and SLO-callback paths
+     * elsewhere in this codebase — the onelogin/php-saml library always
+     * completes with a raw header()+exit(), even when the redirect target is
+     * perfectly valid; there is no $stay=true equivalent wired up here. That
+     * exit() cannot be observed or intercepted in-process: PHPUnit's process
+     * isolation only reports a result if the child process reaches its own
+     * result-serialization code after the test body returns, which a real
+     * exit() prevents, and no function-mocking extension (uopz/runkit) is
+     * available in this environment to stub it out.
+     *
+     * This test instead uses a deliberately invalid IdP SSO URL so that
+     * onelogin's own settings validation throws from inside the Auth
+     * constructor — before Auth::login() is even called. That is the
+     * furthest point reachable without triggering the real exit(). Note this
+     * only proves getUser() proceeds past both early-return guards
+     * (useAuthService, extSettings === []) into SAML-library integration; it
+     * cannot additionally distinguish this from the processAcsResponse()
+     * branch, since that method's very first line is the same
+     * `new Auth($this->extSettings['saml'])` call and therefore fails
+     * identically for the same reason — the acs/no-acs branch selection
+     * itself is exercised end-to-end by AcsResponseTest instead. The
+     * RelayState/SameOriginUrlGuard computation that follows in the real
+     * code is exercised in isolation by SameOriginUrlGuardTest.
+     */
+    #[Test]
+    public function getUserProceedsToSamlLibraryIntegrationWhenInChargeAndNoAcsParameterIsPresent(): void
+    {
+        unset($_REQUEST['acs']);
+        $service = $this->buildGetUserSubject(true, 'FE', ['saml' => $this->samlSettingsWithInvalidIdpSsoUrl()]);
+
+        $this->expectException(Error::class);
+        $this->expectExceptionMessage('idp_sso_url_invalid');
+
+        $service->getUser();
     }
 }
