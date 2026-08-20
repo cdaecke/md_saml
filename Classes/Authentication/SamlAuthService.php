@@ -401,16 +401,19 @@ class SamlAuthService extends AbstractAuthenticationService
                 ]
             );
 
-            // Always persist SAML session data (NameID, session index) even when
-            // updateIfExist=false, so SP-initiated SLO can read it at logout time.
-            $this->updateUser($record, [
+            // Always persist SAML session data (source flag, NameID, session index)
+            // even when updateIfExist=false, so SP-initiated SLO can read it at
+            // logout time. Without md_saml_source=1, the SLO middlewares would
+            // never look at the NameID/session index below in the first place.
+            $syncedUser = $this->updateUser($record, [
                 'username' => $user['username'],
+                'md_saml_source' => $user['md_saml_source'],
                 'md_saml_nameid' => $user['md_saml_nameid'],
                 'md_saml_nameid_format' => $user['md_saml_nameid_format'],
                 'md_saml_session_index' => $user['md_saml_session_index'],
             ]);
 
-            return $record;
+            return $this->resolveUpdatedRecord($syncedUser, $record);
         }
 
         if ($this->extSettings[$this->authInfo['db_user']['table']]['createIfNotExist'] === true) {
@@ -431,6 +434,16 @@ class SamlAuthService extends AbstractAuthenticationService
         );
 
         return false;
+    }
+
+    /**
+     * @param array<string, mixed>|false $updated
+     * @param array<string, mixed> $fallback
+     * @return array<string, mixed>
+     */
+    private function resolveUpdatedRecord(array|false $updated, array $fallback): array
+    {
+        return is_array($updated) ? $updated : $fallback;
     }
 
     /**

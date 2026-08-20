@@ -124,6 +124,8 @@ final class AcsResponseTest extends FunctionalTestCase
     /**
      * @param array<string, mixed> $samlSettingsOverride Merged into extSettings['saml'],
      *   e.g. ['debug' => true], without touching the shared site fixture on disk.
+     * @param array<string, mixed> $tableSettingsOverride Merged into extSettings[$table],
+     *   e.g. ['updateIfExist' => false], without touching the shared site fixture on disk.
      */
     private function callGetUser(
         string $loginType,
@@ -131,7 +133,8 @@ final class AcsResponseTest extends FunctionalTestCase
         string $path,
         string $responseB64,
         ?string $relayState = null,
-        array $samlSettingsOverride = []
+        array $samlSettingsOverride = [],
+        array $tableSettingsOverride = []
     ): false|array {
         $this->setAcsRequestGlobals($path, $responseB64, $relayState);
 
@@ -154,6 +157,7 @@ final class AcsResponseTest extends FunctionalTestCase
 
         $settings = GeneralUtility::makeInstance(SettingsService::class)->getSettings($loginType);
         $settings['saml'] = array_merge($settings['saml'], $samlSettingsOverride);
+        $settings[$table] = array_merge($settings[$table], $tableSettingsOverride);
         $subjectReflection->getProperty('extSettings')->setValue($subject, $settings);
 
         return $subject->getUser();
@@ -340,5 +344,84 @@ final class AcsResponseTest extends FunctionalTestCase
             self::assertStringContainsString('text/html', $response->getHeaderLine('Content-Type'));
             self::assertStringContainsString('SAML error', (string)$response->getBody());
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getFeUserByUsername(string $username): array
+    {
+        $queryBuilder = $this->getConnectionPool()->getQueryBuilderForTable('fe_users');
+        $row = $queryBuilder->select('*')
+            ->from('fe_users')
+            ->where($queryBuilder->expr()->eq('username', $queryBuilder->createNamedParameter($username)))
+            ->executeQuery()
+            ->fetchAssociative();
+        self::assertIsArray($row);
+        return $row;
+    }
+
+    #[Test]
+    public function syncsSamlSessionFieldsWithoutOverwritingOtherFieldsWhenUpdateIfExistIsFalse(): void
+    {
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'no-update-nameid',
+            ['mail' => 'existing-acs-user']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: ['updateIfExist' => false]
+        );
+
+        self::assertIsArray($result);
+        self::assertSame(1, (int)$result['md_saml_source']);
+        self::assertSame('no-update-nameid', $result['md_saml_nameid']);
+        // Untouched: updateIfExist=false means only the SAML session fields sync,
+        // not the rest of the mapped/default attributes.
+        self::assertSame('old@example.com', $result['email']);
+        self::assertSame('old-hash', $result['password']);
+
+        $stored = $this->getFeUserByUsername('existing-acs-user');
+        self::assertSame(1, (int)$stored['md_saml_source']);
+        self::assertSame('no-update-nameid', $stored['md_saml_nameid']);
+        self::assertSame('old@example.com', $stored['email']);
+    }
+
+    #[Test]
+    public function doesNotCreateFeUserWhenCreateIfNotExistIsFalse(): void
+    {
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'no-create-nameid',
+            ['mail' => 'brand-new-user']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: ['createIfNotExist' => false]
+        );
+
+        self::assertFalse($result);
+
+        $queryBuilder = $this->getConnectionPool()->getQueryBuilderForTable('fe_users');
+        $count = $queryBuilder->count('uid')
+            ->from('fe_users')
+            ->where($queryBuilder->expr()->eq(
+                'username',
+                $queryBuilder->createNamedParameter('brand-new-user')
+            ))
+            ->executeQuery()
+            ->fetchOne();
+        self::assertSame(0, (int)$count);
     }
 }
