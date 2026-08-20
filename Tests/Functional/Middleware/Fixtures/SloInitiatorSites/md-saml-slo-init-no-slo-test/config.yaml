@@ -1,0 +1,69 @@
+rootPageId: 1
+base: 'https://typo3-slo-init-no-slo-test.local/'
+languages:
+  -
+    title: English
+    enabled: true
+    languageId: 0
+    base: /
+    typo3Language: default
+    locale: en_US.UTF-8
+    iso-639-1: en
+    navigationTitle: ''
+    hreflang: en-US
+    direction: ''
+    flag: us
+settings:
+  md_saml:
+    mdsamlSpBaseUrl: 'https://typo3-slo-init-no-slo-test.local'
+    publicMetadata: false
+
+    fe_users:
+      active: true
+      saml:
+        sp:
+          entityId: '/login/?loginProvider=1648123062&mdsamlmetadata'
+          assertionConsumerService:
+            url: '/login/?loginProvider=1648123062&acs'
+      createIfNotExist: true
+      updateIfExist: true
+      transformationArr:
+        username: 'mail'
+
+    be_users:
+      saml:
+        sp:
+          entityId: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+          assertionConsumerService:
+            url: '/typo3/index.php?loginProvider=1648123062&acs'
+      createIfNotExist: true
+      updateIfExist: true
+      transformationArr:
+        username: 'mail'
+
+    saml:
+      strict: true
+      debug: false
+      baseurl: ''
+      sp:
+        entityId: '/base-entity'
+        assertionConsumerService:
+          url: '/base-acs'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+        # SP's own local SLO endpoint is configured as usual - this is routing
+        # config for our own side, independent of what the IdP supports.
+        singleLogoutService:
+          url: '/index.php?loginProvider=1648123062&sls'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+        NameIDFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        x509cert: ''
+        privateKey: ''
+      idp:
+        entityId: 'https://idp.example.com/entity'
+        singleSignOnService:
+          url: 'https://idp.example.com/sso'
+          binding: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+        # Deliberately no singleLogoutService: this IdP does not support SLO
+        # (e.g. Google Workspace). SettingsService strips both idp/sp
+        # singleLogoutService keys in this case (url is empty).
+        x509cert: 'EXT:md_saml/Tests/Fixtures/Saml/idp.crt'

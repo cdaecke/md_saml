@@ -73,17 +73,17 @@ final class SlsBackendSloInitiatorMiddlewareTest extends FunctionalTestCase
      * SettingsService resolves the current site via GeneralUtility::getIndpEnv('TYPO3_REQUEST_URL'),
      * which reads from $_SERVER and memoizes per process — flushed here whenever $_SERVER changes.
      */
-    private function buildLogoutRequest(): ServerRequestInterface
+    private function buildLogoutRequest(string $host = self::HOST): ServerRequestInterface
     {
         $_SERVER['HTTPS'] = 'on';
-        $_SERVER['HTTP_HOST'] = self::HOST;
+        $_SERVER['HTTP_HOST'] = $host;
         $_SERVER['SERVER_PORT'] = '443';
         $_SERVER['SCRIPT_NAME'] = '/typo3/index.php';
         $_SERVER['REQUEST_URI'] = '/typo3/logout';
         $_SERVER['QUERY_STRING'] = '';
         GeneralUtility::flushInternalRuntimeCaches();
 
-        return (new ServerRequest('https://' . self::HOST . '/typo3/logout', 'GET'))
+        return (new ServerRequest('https://' . $host . '/typo3/logout', 'GET'))
             ->withAttribute('route', new Route('/logout', []));
     }
 
@@ -214,5 +214,26 @@ final class SlsBackendSloInitiatorMiddlewareTest extends FunctionalTestCase
         } finally {
             $GLOBALS['TYPO3_CONF_VARS']['EXTENSIONS']['md_saml'] = $originalConfig;
         }
+    }
+
+    /**
+     * IdPs without an SLO endpoint (e.g. Google Workspace): SettingsService strips
+     * idp/sp singleLogoutService from the resolved settings, and this middleware
+     * must fall back to the standard TYPO3 logout instead of attempting a SAML
+     * round-trip against a URL that does not exist.
+     */
+    #[Test]
+    public function passesThroughWhenIdpHasNoSingleLogoutServiceConfigured(): void
+    {
+        $this->setUpBackendUser(self::USER_ID);
+        self::assertTrue($this->beSessionExists());
+
+        $request = $this->buildLogoutRequest('typo3-slo-init-no-slo-test.local');
+
+        $subject = GeneralUtility::makeInstance(SlsBackendSamlMiddleware::class);
+        $response = $subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+        self::assertTrue($this->beSessionExists());
     }
 }

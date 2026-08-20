@@ -63,7 +63,7 @@ final class SlsFrontendSloInitiatorMiddlewareTest extends FunctionalTestCase
      * directly would require replicating internal ses_iplock/JWT-signing
      * details that are not part of any public contract.
      */
-    private function fixateFeSession(): string
+    private function fixateFeSession(string $host = self::HOST): string
     {
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
@@ -73,7 +73,7 @@ final class SlsFrontendSloInitiatorMiddlewareTest extends FunctionalTestCase
 
         // Matches CookieScopeTrait::getCookieScope() with no cookieDomain configured
         // (the default): host-only domain, root site path.
-        return $session->getJwt(new CookieScope(self::HOST, true, '/'));
+        return $session->getJwt(new CookieScope($host, true, '/'));
     }
 
     /**
@@ -117,9 +117,12 @@ final class SlsFrontendSloInitiatorMiddlewareTest extends FunctionalTestCase
         return $request->withAttribute('normalizedParams', NormalizedParams::createFromRequest($request));
     }
 
-    private function buildLogoutRequest(string $sessionCookie, string $referer = ''): ServerRequestInterface
-    {
-        $request = $this->createServerRequest('https://' . self::HOST . '/index.php?logintype=logout')
+    private function buildLogoutRequest(
+        string $sessionCookie,
+        string $referer = '',
+        string $host = self::HOST
+    ): ServerRequestInterface {
+        $request = $this->createServerRequest('https://' . $host . '/index.php?logintype=logout')
             ->withQueryParams(['logintype' => 'logout'])
             ->withCookieParams(['fe_typo_user' => $sessionCookie]);
 
@@ -236,5 +239,27 @@ final class SlsFrontendSloInitiatorMiddlewareTest extends FunctionalTestCase
         $response = $subject->process($request, $this->nextHandler());
 
         self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+    }
+
+    /**
+     * IdPs without an SLO endpoint (e.g. Google Workspace): SettingsService strips
+     * idp/sp singleLogoutService from the resolved settings, and this middleware
+     * must pass through so felogin performs a normal local logout, instead of
+     * attempting a SAML round-trip against a URL that does not exist.
+     */
+    #[Test]
+    public function passesThroughWhenIdpHasNoSingleLogoutServiceConfigured(): void
+    {
+        $host = 'typo3-slo-init-no-slo-test.local';
+        $sessionCookie = $this->fixateFeSession($host);
+        self::assertTrue($this->feSessionExists());
+
+        $request = $this->buildLogoutRequest($sessionCookie, host: $host);
+
+        $subject = GeneralUtility::makeInstance(SlsFrontendSloInitiatorMiddleware::class);
+        $response = $subject->process($request, $this->nextHandler());
+
+        self::assertSame('NEXT-HANDLER-CALLED', (string)$response->getBody());
+        self::assertTrue($this->feSessionExists());
     }
 }
