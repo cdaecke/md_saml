@@ -120,7 +120,27 @@ class SlsFrontendSamlMiddleware extends SlsSamlMiddleware
     private function isSafeAcsRelayState(string $relayState): bool
     {
         return SameOriginUrlGuard::isSameOrigin($relayState)
-            && !str_starts_with($relayState, Utils::getSelfRoutedURLNoQuery());
+            && !$this->pointsBackToAcsRoute($relayState);
+    }
+
+    /**
+     * True when $relayState is the ACS route itself (same path, optionally followed by
+     * a different query string or fragment). A plain str_starts_with() against the ACS
+     * route also matches any page whose path merely has the ACS route as a literal
+     * prefix — e.g. an ACS route of "/" (SAML login configured on the site root) would
+     * then match every page on the site, silently blocking every post-login redirect.
+     * Only treat it as "the same route" when the character right after the ACS route's
+     * path is '?', '#', or the end of the string.
+     */
+    private function pointsBackToAcsRoute(string $relayState): bool
+    {
+        $acsRoute = Utils::getSelfRoutedURLNoQuery();
+        if (!str_starts_with($relayState, $acsRoute)) {
+            return false;
+        }
+
+        $remainder = substr($relayState, strlen($acsRoute));
+        return $remainder === '' || in_array($remainder[0], ['?', '#'], true);
     }
 
     /**

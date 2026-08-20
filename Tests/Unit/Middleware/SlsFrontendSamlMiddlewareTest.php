@@ -105,6 +105,23 @@ final class SlsFrontendSamlMiddlewareTest extends UnitTestCase
     }
 
     /**
+     * Regression test for https://github.com/cdaecke/md_saml/issues/73#issuecomment-5343597499:
+     * when SAML login/ACS is configured on the site root, the ACS route ("/") is a literal
+     * string prefix of every other page on the site. A str_starts_with() based loop-guard
+     * would therefore block the redirect to every target page, not just the ACS route itself.
+     */
+    #[Test]
+    public function isSafeAcsRelayStateAllowsSubpagesWhenAcsRouteIsTheSiteRoot(): void
+    {
+        $_SERVER['REQUEST_URI'] = '/?loginProvider=1648123062&acs=1';
+        $_SERVER['QUERY_STRING'] = 'loginProvider=1648123062&acs=1';
+
+        self::assertTrue($this->isSafeAcsRelayState('http://typo3.example.com/example-page'));
+        self::assertFalse($this->isSafeAcsRelayState('http://typo3.example.com/'));
+        self::assertFalse($this->isSafeAcsRelayState('http://typo3.example.com/?foo=bar'));
+    }
+
+    /**
      * @return array<string, array{0: string, 1: bool}>
      */
     public static function sloRedirectTargetProvider(): array
