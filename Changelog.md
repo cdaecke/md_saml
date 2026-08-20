@@ -1,3 +1,12 @@
+# Version 5.1.2 (2026-08-20)
+
+- [TASK] add unit and functional tests
+- [BUGFIX] resolve FE session via signed LogoutRequest NameID when SLO cookie is missing. Thanks to [tobiasschaeferptb](https://github.com/tobiasschaeferptb) for reporting!
+- [BUGFIX] fix ACS RelayState loop-guard blocking redirects on parent pages. Thanks to [BastiLu](https://github.com/BastiLu) for reporting!
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.1.1...5.1.2
+
 # Version 5.1.1 (2026-08-11)
 
 - [BUGFIX] guard IdP-initiated SLO in SlsBackendSamlMiddleware to backend requests. Thanks to [tobiasschaeferptb](https://github.com/tobiasschaeferptb)!
