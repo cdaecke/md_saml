@@ -70,7 +70,11 @@
 	},
 	"extra": {
 		"typo3/cms": {
+			"Package": {
+				"providesPackages": {}
+			},
 			"extension-key": "md_saml",
+			"version": "5.1.1",
 			"web-dir": ".Build/Web"
 		}
 	},
