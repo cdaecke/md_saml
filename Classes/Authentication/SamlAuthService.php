@@ -237,6 +237,59 @@ class SamlAuthService extends AbstractAuthenticationService
     }
 
     /**
+     * Looks up an existing user by the `md_saml_identity` column instead of
+     * `username`. Reuses fetchUserRecord() (and, via it, the fe_users pid
+     * restriction above) with the username_column swapped out, so the same
+     * enable/deleted/pid restrictions apply as for a username-based lookup.
+     *
+     * `md_saml_identity` is meant to be mapped (via `transformationArr`) to a
+     * SAML attribute that stays constant for the lifetime of the IdP account
+     * (e.g. an ADFS objectGUID or an Azure AD `oid` claim). Matching on it
+     * instead of `username` keeps the same local user record intact even if
+     * `username` (e.g. mapped to an email address) changes at the IdP later on.
+     *
+     * SECURITY: the mapped attribute must be fully IdP-controlled, never
+     * reassigned to a different person, and not editable by end users
+     * themselves - whoever presents this value in a future (signature-valid)
+     * login is matched onto, and logged in as, the record that already holds
+     * it. Same requirement `username` already has today, now also applying
+     * to this column.
+     *
+     * @return array<string, mixed>|false
+     */
+    protected function fetchUserRecordByIdentity(string $identity): array|false
+    {
+        if ($identity === '') {
+            return false;
+        }
+
+        $dbUser = $this->db_user;
+        $dbUser['username_column'] = 'md_saml_identity';
+
+        return $this->fetchUserRecord($identity, '', $dbUser);
+    }
+
+    /**
+     * Resolves the local user record for the current SAML login: matches by
+     * `md_saml_identity` first (if configured and present in the assertion),
+     * falling back to `username`. See fetchUserRecordByIdentity() for why.
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>|false
+     */
+    private function resolveExistingUser(array $user): array|false
+    {
+        if (($user['md_saml_identity'] ?? '') !== '') {
+            $record = $this->fetchUserRecordByIdentity((string)$user['md_saml_identity']);
+            if (is_array($record)) {
+                return $record;
+            }
+        }
+
+        return $this->fetchUserRecord($user['username']);
+    }
+
+    /**
      * Get user data
      * Is called to get additional information after login.
      *
@@ -385,7 +438,7 @@ class SamlAuthService extends AbstractAuthenticationService
         $user['md_saml_nameid_format'] = $auth->getNameIdFormat() ?? '';
         $user['md_saml_session_index'] = $auth->getSessionIndex() ?? '';
 
-        $record = $this->fetchUserRecord($user['username']);
+        $record = $this->resolveExistingUser($user);
         if (is_array($record)) {
             if (
                 isset($this->extSettings[$this->authInfo['db_user']['table']]['updateIfExist']) &&
@@ -411,13 +464,7 @@ class SamlAuthService extends AbstractAuthenticationService
             // even when updateIfExist=false, so SP-initiated SLO can read it at
             // logout time. Without md_saml_source=1, the SLO middlewares would
             // never look at the NameID/session index below in the first place.
-            $syncedUser = $this->updateUser($record, [
-                'username' => $user['username'],
-                'md_saml_source' => $user['md_saml_source'],
-                'md_saml_nameid' => $user['md_saml_nameid'],
-                'md_saml_nameid_format' => $user['md_saml_nameid_format'],
-                'md_saml_session_index' => $user['md_saml_session_index'],
-            ]);
+            $syncedUser = $this->updateUser($record, $this->buildSamlTrackingFields($user));
 
             return $this->resolveUpdatedRecord($syncedUser, $record);
         }
@@ -450,6 +497,34 @@ class SamlAuthService extends AbstractAuthenticationService
     private function resolveUpdatedRecord(array|false $updated, array $fallback): array
     {
         return is_array($updated) ? $updated : $fallback;
+    }
+
+    /**
+     * Builds the field list used to always persist SAML session/tracking data
+     * (source flag, NameID, session index and, if mapped, md_saml_identity)
+     * even when updateIfExist=false. See the call site for why.
+     *
+     * @param array<string, mixed> $user
+     * @return array<string, mixed>
+     */
+    private function buildSamlTrackingFields(array $user): array
+    {
+        $fields = [
+            'username' => $user['username'],
+            'md_saml_source' => $user['md_saml_source'],
+            'md_saml_nameid' => $user['md_saml_nameid'],
+            'md_saml_nameid_format' => $user['md_saml_nameid_format'],
+            'md_saml_session_index' => $user['md_saml_session_index'],
+        ];
+
+        if (isset($user['md_saml_identity'])) {
+            // Backfill even when updateIfExist=false, so identity-based lookup
+            // (see resolveExistingUser()) becomes effective from the next login
+            // onward, regardless of the updateIfExist setting.
+            $fields['md_saml_identity'] = $user['md_saml_identity'];
+        }
+
+        return $fields;
     }
 
     /**
@@ -516,6 +591,48 @@ class SamlAuthService extends AbstractAuthenticationService
     }
 
     /**
+     * Prevents reassigning `username` to a value already used by a *different*
+     * record. This can happen when $localUser was matched via md_saml_identity
+     * (see resolveExistingUser()) after the incoming username (e.g. mapped to
+     * an email address) changed at the IdP. TYPO3 has no unique constraint on
+     * username, so blindly applying it here could silently let two accounts
+     * share one login name. Returns $userData with 'username' removed if it
+     * would collide; unchanged otherwise.
+     *
+     * @param array<string, mixed> $userData
+     * @param array<string, mixed> $localUser
+     * @return array<string, mixed>
+     */
+    private function guardAgainstUsernameCollision(array $userData, array $localUser, int $uid): array
+    {
+        if (
+            ($userData['username'] ?? '') === ''
+            || $userData['username'] === ($localUser['username'] ?? '')
+        ) {
+            return $userData;
+        }
+
+        $conflictingRecord = $this->fetchUserRecord($userData['username']);
+        if (!is_array($conflictingRecord) || (int)($conflictingRecord['uid'] ?? 0) === $uid) {
+            return $userData;
+        }
+
+        $this->logger->warning(
+            "md_saml: Refused to rename username to '{newUsername}' for uid {uid}:"
+            . ' already used by uid {conflictUid}.',
+            [
+                'newUsername' => $userData['username'],
+                'uid' => $uid,
+                'conflictUid' => $conflictingRecord['uid'],
+            ]
+        );
+
+        unset($userData['username']);
+
+        return $userData;
+    }
+
+    /**
      * Update an existing frontend/backend user with given data
      *
      * @param array $localUser
@@ -528,13 +645,14 @@ class SamlAuthService extends AbstractAuthenticationService
             'SAML authentification: ' . __METHOD__ . ' begin'
         );
 
-        $changed = false;
         $uid = $localUser['uid'] ?? 0;
 
         $userData = $this->eventDispatcher->dispatch(
             new ChangeUserEvent($userData)
         )->getUserData();
+        $userData = $this->guardAgainstUsernameCollision($userData, $localUser, (int)$uid);
 
+        $changed = false;
         foreach ($userData as $key => $value) {
             if ($localUser[$key] !== $value) {
                 $changed = true;
@@ -542,7 +660,9 @@ class SamlAuthService extends AbstractAuthenticationService
             }
         }
 
-        if (!$changed || $uid === 0 || ($userData['username'] ?? '') === '') {
+        $refetchUsername = $userData['username'] ?? ($localUser['username'] ?? '');
+
+        if (!$changed || $uid === 0 || $refetchUsername === '') {
             return $localUser;
         }
 
@@ -566,7 +686,7 @@ class SamlAuthService extends AbstractAuthenticationService
             )
             ->executeStatement();
 
-        return $this->fetchUserRecord($userData['username']);
+        return $this->fetchUserRecord($refetchUsername);
     }
 
     /**

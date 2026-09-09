@@ -1,0 +1,4 @@
+"fe_users"
+,"uid","pid","username","password","email","md_saml_identity","disable","deleted","tstamp","crdate"
+,10,0,"user-old-email@example.com","old-hash","old2@example.com","stable-ext-id-1",0,0,1000,1000
+,11,0,"user-new-email@example.com","old-hash","other@example.com","",0,0,1000,1000
