@@ -1,3 +1,13 @@
+# Version 5.1.3 (2026-09-10)
+
+- [FEATURE] add `md_saml_identity` for matching existing users independent of username. Thanks to [Tobias Kapplmüller](https://github.com/siwa-tkapplmueller) for reporting at [#78](https://github.com/cdaecke/md_saml/issues/78)
+
+Attention<br>
+If you want to use this feature, please run database migration after upgrading the extension!
+
+All changes
+https://github.com/cdaecke/md_saml/compare/5.1.2...5.1.3
+
 # Version 5.1.2 (2026-08-20)
 
 - [TASK] add unit and functional tests
