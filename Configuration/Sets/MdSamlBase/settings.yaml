@@ -24,6 +24,35 @@ md_saml:
       email: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
       realName: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
 
+      # Optional: map a SAML attribute that stays constant for the lifetime of the
+      # IdP account to `md_saml_identity`. When present, an existing user is
+      # looked up by this value *before* falling back to `username` - this keeps
+      # the same local user record intact even if `username` (e.g. mapped to an
+      # email address) changes at the IdP later on.
+      #
+      # SECURITY: only map an attribute that is fully IdP-controlled, never
+      # reassigned to a different person, and not editable by end users
+      # themselves. Whoever presents this value in a future login is matched
+      # onto - and logged in as - the existing local record that already holds
+      # it. This requirement already applies to `username` today; mapping
+      # `md_saml_identity` extends it to a second field, it does not relax it.
+      #
+      # Which attribute to use depends on the IdP - for ADFS/on-prem AD:
+      #   - `objectGUID` is the most durable choice (Microsoft's own recommendation
+      #     for correlating an AD identity across attribute changes - it's what
+      #     Azure AD Connect uses internally as "ImmutableID"), but it is stored
+      #     as binary and needs a custom ADFS claim rule to emit as a string; it
+      #     is not one of the ready-made claim types in the LDAP-attribute wizard.
+      #   - `http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid`
+      #     (the user's AD objectSID) is easier to set up via the standard "Send
+      #     LDAP Attributes as Claims" rule, and works for this purpose in
+      #     practice, but is not perfectly immutable: it changes if the account
+      #     is deleted/recreated, or on a domain/forest migration without
+      #     preserved sIDHistory.
+      # For Azure AD/Entra ID: `http://schemas.microsoft.com/identity/claims/objectidentifier`
+      # (the Entra Object ID, a GUID) is the equivalent stable choice.
+      #md_saml_identity: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid'
+
     # This section allows you to set defaults for a newly created backend users
     # You can add all fields of the database here
     #databaseDefaults:
@@ -61,6 +90,35 @@ md_saml:
       name: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/displayname'
       first_name: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
       last_name: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'
+
+      # Optional: map a SAML attribute that stays constant for the lifetime of the
+      # IdP account to `md_saml_identity`. When present, an existing user is
+      # looked up by this value *before* falling back to `username` - this keeps
+      # the same local user record intact even if `username` (e.g. mapped to an
+      # email address) changes at the IdP later on.
+      #
+      # SECURITY: only map an attribute that is fully IdP-controlled, never
+      # reassigned to a different person, and not editable by end users
+      # themselves. Whoever presents this value in a future login is matched
+      # onto - and logged in as - the existing local record that already holds
+      # it. This requirement already applies to `username` today; mapping
+      # `md_saml_identity` extends it to a second field, it does not relax it.
+      #
+      # Which attribute to use depends on the IdP - for ADFS/on-prem AD:
+      #   - `objectGUID` is the most durable choice (Microsoft's own recommendation
+      #     for correlating an AD identity across attribute changes - it's what
+      #     Azure AD Connect uses internally as "ImmutableID"), but it is stored
+      #     as binary and needs a custom ADFS claim rule to emit as a string; it
+      #     is not one of the ready-made claim types in the LDAP-attribute wizard.
+      #   - `http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid`
+      #     (the user's AD objectSID) is easier to set up via the standard "Send
+      #     LDAP Attributes as Claims" rule, and works for this purpose in
+      #     practice, but is not perfectly immutable: it changes if the account
+      #     is deleted/recreated, or on a domain/forest migration without
+      #     preserved sIDHistory.
+      # For Azure AD/Entra ID: `http://schemas.microsoft.com/identity/claims/objectidentifier`
+      # (the Entra Object ID, a GUID) is the equivalent stable choice.
+      #md_saml_identity: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/primarysid'
 
     # This section allows you to set defaults for a newly created frontend users
     # You can add all fields of the database here

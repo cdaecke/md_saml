@@ -1,8 +1,10 @@
 # TYPO3 Extension `md_saml`
+
 Single Sign-on extension for TYPO3. It enables you, to log into the TYPO3 backend or the website frontend by using an
 Identity Provider (IdP), for example an ADFS server (Active Directory Federation Services). It is fully configurable via Site Sets and `settings.yaml`.
 
 ## Screenshots
+
 TYPO3 login:
 
 <img src="./Documentation/Images/typo3_login.png?raw=true" alt="TYPO3 login" width="346" height="389" style="border:1px solid #999999" />
@@ -12,15 +14,18 @@ Frontend login:
 <img src="./Documentation/Images/frontend_login.png?raw=true" alt="Frontend login" width="388" height="389" style="border:1px solid #999999" />
 
 ## Requirements
+
 - TYPO3 v13.4 || v14.3
 
 ## Installation
+
 - Install the extension with the following composer command: `composer req mediadreams/md_saml` or use the extension manager
 - In module `Site Configuration` add `MdSaml base configuration (ext:md_saml)` in section `Sets for this Site`
 - Activate backend login in the extension configuration. Frontend login is activated in the settings of the extension.
 - Configure the extension by overriding the site settings of the extension
 
 ## Login and logout flows
+
 - [Backend login](./Documentation/BackendLogin.md)
 - [Backend logout](./Documentation/BackendLogout.md)
 - [Frontend login](./Documentation/FrontendLogin.md)
@@ -28,6 +33,7 @@ Frontend login:
 - [Sudo Mode](./Documentation/SudoMode.md)
 
 ## Configuration
+
 ### Site Set
 
 The Service Provider (SP) and Identity Provider (IdP) can be configured by adding the settings in the Site Set
@@ -142,7 +148,6 @@ Default: `/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login
 By default frontend login is enabled and it will load a different login template.
 Deactivate the frontend login by setting `md_saml.fe_users.active = false`.
 
-
 - `md_saml.fe_users.saml.sp.entityId`<br>
 Identifier of the frontend SP entity  (must be a URI)<br>
 ATTENTION: `mdsamlSpBaseUrl` will be attached automatically<br>
@@ -162,6 +167,7 @@ As underlying SAML toolkit the library of OneLogin is used (no account with OneL
 See full [documentation](https://github.com/onelogin/php-saml) for details on the configuration.
 
 #### Users
+
 **Backend**
 
 - `md_saml.be_users.createIfNotExist`<br>
@@ -184,6 +190,7 @@ Example: `md_saml.fe_users.databaseDefaults.usergroup = 123` will create a new u
 ATTENTION: `md_saml.fe_users.databaseDefaults.pid` will be used as storage for newly created fe_users.
 
 #### SSO
+
 The returned value of the SSO provider can be anything. With the following configuration set the names of the returned
 values to the ones needed in TYPO3:
 
@@ -199,7 +206,37 @@ The above example shows the returning value of an ADFS server, which contains th
 Example: `md_saml.fe_users.transformationArr.username = http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname` <br>
 The above example shows the returning value of an ADFS server, which contains the username for a frontend user.
 
+#### Matching existing users
+
+By default, an existing user is matched by `username` alone. If `username` is mapped to a value that can
+change at the IdP (e.g. an email address), a user record can no longer be found once that value changes,
+and (with `createIfNotExist = 1`) a duplicate record gets created instead.
+
+To avoid this, map a SAML attribute that stays constant for the lifetime of the IdP account to
+`md_saml_identity` — for both backend and frontend the same way as any other field in `transformationArr`:
+
+- `md_saml.be_users.transformationArr.md_saml_identity`<br>
+- `md_saml.fe_users.transformationArr.md_saml_identity`<br>
+
+When present in the assertion, the existing record is looked up by `md_saml_identity` *before* `username`,
+so the same local record is kept even if `username` changes later on. `md_saml_identity` is backfilled
+automatically from the first login after it is mapped - no manual migration is needed.
+
+**Security:** only map an attribute that is fully IdP-controlled, never reassigned to a different person,
+and not editable by end users themselves. Whoever presents this value in a future login is matched onto -
+and logged in as - the existing local record that already holds it. This requirement already applies to
+`username` today; mapping `md_saml_identity` extends it to a second field, it does not relax it.
+
+Which attribute to use depends on the IdP - see the commented example and its trade-offs in
+`Configuration/Sets/MdSamlBase/settings.yaml`. In short: for ADFS/on-prem AD, `objectGUID` is the most
+durable choice but needs a custom claim rule (it's binary and has no ready-made claim type); the
+`primarysid` claim (the user's AD `objectSID`) is easier to set up via the standard "Send LDAP Attributes
+as Claims" rule and works in practice, but isn't perfectly immutable - it changes on account
+deletion/recreation or on a domain/forest migration without preserved `sIDHistory`. For Azure AD/Entra ID,
+the Entra Object ID claim (`.../identity/claims/objectidentifier`) is the equivalent stable choice.
+
 ### ADFS
+
 The following steps are an example on how to configure an ADFS server as IdP (Identity Provider).
 
 Since I don't have the configuration in english, the following section is available in german only. I am sorry for that!
@@ -261,6 +298,7 @@ Wert, der in `md_saml.mdsamlSpBaseUrl` eingegeben werden.
 ### TYPO3
 
 #### General
+
 <ul>
     <li>
         In `settings.php` or `additional.php` the `['BE']['cookieSameSite']` must be set to `lax`:<br>
@@ -273,12 +311,14 @@ Wert, der in `md_saml.mdsamlSpBaseUrl` eingegeben werden.
 </ul>
 
 #### Site Config
+
 ```yaml
 errorHandling:
     errorCode: 403
     errorHandler: PHP
     errorPhpClassFQCN: Mediadreams\MdSaml\Error\ForbiddenHandling
 ```
+
 #### Change User Event
 
 event to customize user data before insert/update on login
@@ -311,9 +351,11 @@ final class AddGroupChangeUserEventListener {
   }
 }
 ```
+
 You must register the event listener in `Services.yaml`
 
 ## FAQ
+
 <dl>
     <dt>Is is possible, to remove the default login with username and password?</dt>
     <dd>
@@ -335,15 +377,19 @@ You must register the event listener in `Services.yaml`
 </dl>
 
 ## Troubleshooting
+
 If your login fails with the parameter `?commandLI=setCookie` (typo3/index.php?commandLI=setCookie), please make sure,
 that you have set `$GLOBALS['TYPO3_CONF_VARS']['BE']['cookieSameSite'] = 'lax'`.
 
 ## Bugs and Known Issues
+
 If you find a bug, it would be nice if you add an issue on [Github](https://github.com/cdaecke/md_saml/issues).
 
 # THANKS
+
 Thanks a lot to all who make this outstanding TYPO3 project possible!
 
 ## Credits
+
 - Thanks to the guys at OneLogin who provide the [SAML toolkit for PHP](https://github.com/onelogin/php-saml), which I use.
 - Extension icon by [Font Awesome](https://fontawesome.com/icons/key?s=solid).

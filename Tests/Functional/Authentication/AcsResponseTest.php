@@ -20,6 +20,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use TYPO3\CMS\Core\Authentication\AbstractUserAuthentication;
 use TYPO3\CMS\Core\Authentication\BackendUserAuthentication;
+use TYPO3\CMS\Core\Database\Connection;
 use TYPO3\CMS\Core\Http\PropagateResponseException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
@@ -391,6 +392,157 @@ final class AcsResponseTest extends FunctionalTestCase
         self::assertSame(1, (int)$stored['md_saml_source']);
         self::assertSame('no-update-nameid', $stored['md_saml_nameid']);
         self::assertSame('old@example.com', $stored['email']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getFeUserByUid(int $uid): array
+    {
+        $queryBuilder = $this->getConnectionPool()->getQueryBuilderForTable('fe_users');
+        $row = $queryBuilder->select('*')
+            ->from('fe_users')
+            ->where($queryBuilder->expr()->eq('uid', $queryBuilder->createNamedParameter($uid, Connection::PARAM_INT)))
+            ->executeQuery()
+            ->fetchAssociative();
+        self::assertIsArray($row);
+        return $row;
+    }
+
+    #[Test]
+    public function matchesExistingFeUserByMdSamlIdentityAndRenamesUsernameWhenNoCollision(): void
+    {
+        // uid 10 has md_saml_identity='stable-ext-id-1' and username 'user-old-email@example.com'.
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/fe_users_saml_identity.csv');
+
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'identity-rename-nameid',
+            ['mail' => 'rotated-email@example.com', 'externalId' => 'stable-ext-id-1']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: [
+                'transformationArr' => ['username' => 'mail', 'md_saml_identity' => 'externalId'],
+            ]
+        );
+
+        self::assertIsArray($result);
+        self::assertSame(10, (int)$result['uid']);
+        self::assertSame('rotated-email@example.com', $result['username']);
+        self::assertSame('stable-ext-id-1', $result['md_saml_identity']);
+
+        // The old username must not linger as a separate/duplicate row - this is
+        // the exact ext:md_saml GitHub issue #78 scenario: matching by a stable
+        // identity attribute instead of `username` prevents the duplicate that
+        // would otherwise be created when a user's mapped username (e.g. an
+        // email address) changes at the IdP.
+        $queryBuilder = $this->getConnectionPool()->getQueryBuilderForTable('fe_users');
+        $count = $queryBuilder->count('uid')
+            ->from('fe_users')
+            ->where($queryBuilder->expr()->eq(
+                'username',
+                $queryBuilder->createNamedParameter('user-old-email@example.com')
+            ))
+            ->executeQuery()
+            ->fetchOne();
+        self::assertSame(0, (int)$count);
+    }
+
+    #[Test]
+    public function refusesUsernameRenameOnCollisionButStillSyncsSessionData(): void
+    {
+        // uid 10: md_saml_identity='stable-ext-id-1', username 'user-old-email@example.com'.
+        // uid 11: username 'user-new-email@example.com' (already taken by a different record).
+        $this->importCSVDataSet(__DIR__ . '/Fixtures/fe_users_saml_identity.csv');
+
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'identity-collision-nameid',
+            ['mail' => 'user-new-email@example.com', 'externalId' => 'stable-ext-id-1']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: [
+                'transformationArr' => ['username' => 'mail', 'md_saml_identity' => 'externalId'],
+            ]
+        );
+
+        self::assertIsArray($result);
+        self::assertSame(10, (int)$result['uid']);
+        // Rename to 'user-new-email@example.com' is refused: it already belongs to uid 11.
+        self::assertSame('user-old-email@example.com', $result['username']);
+        // Session data is still synced despite the blocked rename.
+        self::assertSame('identity-collision-nameid', $result['md_saml_nameid']);
+
+        $otherUser = $this->getFeUserByUid(11);
+        self::assertSame('user-new-email@example.com', $otherUser['username']);
+    }
+
+    #[Test]
+    public function backfillsMdSamlIdentityOnFirstLoginViaUsernameFallback(): void
+    {
+        // 'existing-acs-user' (uid 1, from fe_users_saml_acs.csv) has md_saml_identity=''
+        // - this is the very first login after `md_saml_identity` is mapped.
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'identity-backfill-nameid',
+            ['mail' => 'existing-acs-user', 'externalId' => 'freshly-issued-id']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: [
+                'transformationArr' => ['username' => 'mail', 'md_saml_identity' => 'externalId'],
+            ]
+        );
+
+        self::assertIsArray($result);
+        self::assertSame(1, (int)$result['uid']);
+        // No row has 'freshly-issued-id' yet, so resolveExistingUser() falls back to
+        // matching by username - and md_saml_identity is backfilled from this login on.
+        self::assertSame('freshly-issued-id', $result['md_saml_identity']);
+    }
+
+    #[Test]
+    public function backfillsMdSamlIdentityEvenWhenUpdateIfExistIsFalse(): void
+    {
+        $responseB64 = $this->buildSignedResponse(
+            self::FE_DESTINATION,
+            self::FE_AUDIENCE,
+            'identity-backfill-readonly-nameid',
+            ['mail' => 'existing-acs-user', 'externalId' => 'readonly-backfill-id']
+        );
+
+        $result = $this->callGetUser(
+            'FE',
+            'fe_users',
+            self::FE_PATH,
+            $responseB64,
+            tableSettingsOverride: [
+                'updateIfExist' => false,
+                'transformationArr' => ['username' => 'mail', 'md_saml_identity' => 'externalId'],
+            ]
+        );
+
+        self::assertIsArray($result);
+        self::assertSame('readonly-backfill-id', $result['md_saml_identity']);
+        // Untouched: updateIfExist=false still only syncs SAML session/tracking fields.
+        self::assertSame('old@example.com', $result['email']);
     }
 
     #[Test]

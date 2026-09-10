@@ -48,21 +48,64 @@ time conditions of the assertion.
 ### Step 6 — Creating or updating the fe_users record
 
 SAML attributes from the assertion are mapped to fe_users fields via the
-`transformationArr` site-set configuration. The record is then either created
-(if `createIfNotExist=true`) or updated (if `updateIfExist=true`). Regardless of
-the `updateIfExist` setting, three SAML session fields are always written to
-fe_users so that SP-initiated SLO can read them at logout time:
+`transformationArr` site-set configuration. An existing record is looked up by
+`md_saml_identity` first (if that column is mapped from a SAML attribute and
+present in the assertion), falling back to `username` otherwise — see
+[Matching existing users](#matching-existing-users) below. The record is then
+either created (if `createIfNotExist=true`) or updated (if `updateIfExist=true`).
+Regardless of the `updateIfExist` setting, SAML session/tracking fields are
+always written to fe_users so that SP-initiated SLO can read them at logout time
+(and so identity-based matching becomes effective from the next login on):
 
 | Column | Content |
-|---|---|
+| --- | --- |
 | `md_saml_source` | `1` — marks this record as SAML-authenticated |
 | `md_saml_nameid` | NameID from the assertion (used in the LogoutRequest) |
 | `md_saml_nameid_format` | NameID format URI |
 | `md_saml_session_index` | IdP session index (used in the LogoutRequest) |
+| `md_saml_identity` | Stable identity attribute value, if `transformationArr` maps one |
 
 TYPO3 does not use PHP sessions, so the library's built-in `$_SESSION` storage for
 this data is unavailable. Persisting it in the database record is the only reliable
 way to make it available between the login and a later SP-initiated logout request.
+
+#### Matching existing users
+
+By default, an existing user is matched by `username` alone. If `username` is
+mapped to a mutable attribute (e.g. an email address), a user record can no
+longer be found once that attribute changes at the IdP, and — with
+`createIfNotExist=true` — a second, duplicate record is created instead.
+
+To avoid this, map a SAML attribute that stays constant for the lifetime of the
+IdP account to `md_saml_identity` in `transformationArr`. When present in the
+assertion, the existing record is looked up by `md_saml_identity` *before*
+`username`, so the same local record is kept even if `username` changes later
+on. `md_saml_identity` is backfilled automatically from the first login after
+it is mapped - no manual migration is needed.
+
+**Security:** only map an attribute that is fully IdP-controlled, never
+reassigned to a different person, and not editable by end users themselves.
+Whoever presents this value in a future login is matched onto — and logged in
+as — the existing local record that already holds it. This requirement already
+applies to `username` today; mapping `md_saml_identity` extends it to a second
+field, it does not relax it.
+
+Which attribute to use depends on the IdP — see the commented example and its
+trade-offs in `Configuration/Sets/MdSamlBase/settings.yaml`. In short: for
+ADFS/on-prem AD, `objectGUID` is the most durable choice but needs a custom
+claim rule (it's binary and has no ready-made claim type); the `primarysid`
+claim (the user's AD `objectSID`) is easier to set up via the standard "Send
+LDAP Attributes as Claims" rule and works in practice, but isn't perfectly
+immutable — it changes on account deletion/recreation or on a domain/forest
+migration without preserved `sIDHistory`. For Azure AD/Entra ID, the Entra
+Object ID claim (`.../identity/claims/objectidentifier`) is the equivalent
+stable choice.
+
+If matching by `md_saml_identity` finds a record whose `username` differs from
+the incoming one, and that new `username` is already used by a *different*
+record, the rename is skipped (with a warning logged) while all other fields
+still sync — TYPO3 has no unique constraint on `username`, so two records are
+never silently merged under one login name.
 
 ### Step 7 — Redirect to the original page
 
