@@ -178,6 +178,12 @@ settings:
     type: text
     default: ''
     category: mdSaml.sp
+  md_saml.saml.sp.privateKey:
+    label: 'SP key'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.sp
 
   # ------------------------------------------------------------------ IdP
   md_saml.saml.idp.entityId:
