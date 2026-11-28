@@ -1,0 +1,669 @@
+categories:
+  mdSaml:
+    label: 'MdSaml (SAML SSO)'
+  mdSaml.general:
+    label: 'General'
+    parent: mdSaml
+  mdSaml.be:
+    label: 'Backend users'
+    parent: mdSaml
+  mdSaml.fe:
+    label: 'Frontend users'
+    parent: mdSaml
+  mdSaml.sp:
+    label: 'Service Provider (SP)'
+    parent: mdSaml
+  mdSaml.idp:
+    label: 'Identity Provider (IdP)'
+    parent: mdSaml
+  mdSaml.security:
+    label: 'Security / advanced'
+    parent: mdSaml
+
+settings:
+  # ---------------------------------------------------------------- general
+  md_saml.mdsamlSpBaseUrl:
+    label: 'SP base URL'
+    description: 'Is prepended automatically to entityId and the ACS/SLS URLs.'
+    type: string
+    default: ''
+    category: mdSaml.general
+  md_saml.publicMetadata:
+    label: 'Public SAML metadata'
+    description: 'Make the SAML metadata available without TYPO3 backend login.'
+    type: bool
+    default: false
+    category: mdSaml.general
+  md_saml.saml.strict:
+    label: 'Strict mode'
+    type: bool
+    default: true
+    category: mdSaml.general
+  md_saml.saml.debug:
+    label: 'Debug mode'
+    type: bool
+    default: false
+    category: mdSaml.general
+  md_saml.saml.baseurl:
+    label: 'Base URL override'
+    type: string
+    default: ''
+    category: mdSaml.general
+
+  # ---------------------------------------------------------- backend users
+  md_saml.be_users.saml.sp.entityId:
+    label: 'BE: SP entity ID'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+    category: mdSaml.be
+  md_saml.be_users.saml.sp.assertionConsumerService.url:
+    label: 'BE: ACS URL'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs'
+    category: mdSaml.be
+  md_saml.be_users.createIfNotExist:
+    label: 'BE: create user if not existing'
+    type: bool
+    default: true
+    category: mdSaml.be
+  md_saml.be_users.updateIfExist:
+    label: 'BE: update existing user'
+    type: bool
+    default: true
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.username:
+    label: 'BE: SAML attribute for username'
+    type: string
+    default: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname'
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.email:
+    label: 'BE: SAML attribute for email'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.realName:
+    label: 'BE: SAML attribute for real name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
+    category: mdSaml.be
+
+  # --------------------------------------------------------- frontend users
+  md_saml.fe_users.active:
+    label: 'FE: enable SAML login'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.saml.sp.entityId:
+    label: 'FE: SP entity ID'
+    description: 'Example: /login/?loginProvider=1648123062&mdsamlmetadata'
+    type: string
+    default: ''
+    category: mdSaml.fe
+  md_saml.fe_users.saml.sp.assertionConsumerService.url:
+    label: 'FE: ACS URL'
+    description: 'Example: /login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
+    type: string
+    default: ''
+    category: mdSaml.fe
+  md_saml.fe_users.createIfNotExist:
+    label: 'FE: create user if not existing'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.updateIfExist:
+    label: 'FE: update existing user'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.username:
+    label: 'FE: SAML attribute for username'
+    type: string
+    default: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.email:
+    label: 'FE: SAML attribute for email'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.name:
+    label: 'FE: SAML attribute for name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/displayname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.first_name:
+    label: 'FE: SAML attribute for first name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.last_name:
+    label: 'FE: SAML attribute for last name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'
+    category: mdSaml.fe
+
+  # ------------------------------------------------------------------- SP
+  md_saml.saml.sp.entityId:
+    label: 'SP entity ID'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+    category: mdSaml.sp
+  md_saml.saml.sp.assertionConsumerService.url:
+    label: 'SP ACS URL'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs'
+    category: mdSaml.sp
+  md_saml.saml.sp.assertionConsumerService.binding:
+    label: 'SP ACS binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+    category: mdSaml.sp
+  md_saml.saml.sp.singleLogoutService.url:
+    label: 'SP SLS URL'
+    type: string
+    default: '/index.php?loginProvider=1648123062&sls'
+    category: mdSaml.sp
+  md_saml.saml.sp.singleLogoutService.binding:
+    label: 'SP SLS binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.sp
+  md_saml.saml.sp.NameIDFormat:
+    label: 'SP NameID format'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+    category: mdSaml.sp
+  md_saml.saml.sp.x509cert:
+    label: 'SP certificate'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.sp
+  md_saml.saml.sp.privateKey:
+    label: 'SP key'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.sp
+
+  # ------------------------------------------------------------------ IdP
+  md_saml.saml.idp.entityId:
+    label: 'IdP entity ID'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleSignOnService.url:
+    label: 'IdP SSO URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleSignOnService.binding:
+    label: 'IdP SSO binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.url:
+    label: 'IdP SLO URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.responseUrl:
+    label: 'IdP SLO response URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.binding:
+    label: 'IdP SLO binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.idp
+  md_saml.saml.idp.x509cert:
+    label: 'IdP certificate'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.idp
+
+  # ------------------------------------------------------ security/advanced
+  md_saml.saml.compress.requests:
+    label: 'Compress requests'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.compress.responses:
+    label: 'Compress responses'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.nameIdEncrypted:
+    label: 'Encrypt NameID of logout requests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.authnRequestsSigned:
+    label: 'Sign AuthnRequests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.logoutRequestSigned:
+    label: 'Sign logout requests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.logoutResponseSigned:
+    label: 'Sign logout responses'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.signMetadata:
+    label: 'Sign metadata'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantMessagesSigned:
+    label: 'Require signed messages'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantAssertionsEncrypted:
+    label: 'Require encrypted assertions'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantAssertionsSigned:
+    label: 'Require signed assertions'
+    description: 'Should be enabled if your IdP signs assertions (recommended for production).'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantNameId:
+    label: 'Require NameID'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.wantNameIdEncrypted:
+    label: 'Require encrypted NameID'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantXMLValidation:
+    label: 'Validate received XML'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.relaxDestinationValidation:
+    label: 'Relax destination validation'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.allowRepeatAttributeName:
+    label: 'Allow repeated attribute names'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.destinationStrictlyMatches:
+    label: 'Destination must match strictly'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.rejectUnsolicitedResponsesWithInResponseTo:
+    label: 'Reject unsolicited responses with InResponseTo'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.requestedAuthnContextComparison:
+    label: 'AuthnContext comparison'
+    type: string
+    default: 'exact'
+    category: mdSaml.security
+  md_saml.saml.security.signatureAlgorithm:
+    label: 'Signature algorithm'
+    type: string
+    default: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+    category: mdSaml.security
+  md_saml.saml.security.digestAlgorithm:
+    label: 'Digest algorithm'
+    type: string
+    default: 'http://www.w3.org/2001/04/xmlenc#sha256'
+    category: mdSaml.security
+  md_saml.saml.security.encryption_algorithm:
+    label: 'Encryption algorithm'
+    type: string
+    default: 'http://www.w3.org/2009/xmlenc11#aes128-gcm'
+    category: mdSaml.security
+  md_saml.saml.security.lowercaseUrlencoding:
+    label: 'Lowercase URL encoding (ADFS)'
+    type: bool
+    default: false
+    category: mdSaml.security
+[kssav@ks-web-02 store-stg]$ cat typo3conf/ext/md_saml/Configuration/Sets/MdSamlBase/settings.definitions.yaml
+categories:
+  mdSaml:
+    label: 'MdSaml (SAML SSO)'
+  mdSaml.general:
+    label: 'General'
+    parent: mdSaml
+  mdSaml.be:
+    label: 'Backend users'
+    parent: mdSaml
+  mdSaml.fe:
+    label: 'Frontend users'
+    parent: mdSaml
+  mdSaml.sp:
+    label: 'Service Provider (SP)'
+    parent: mdSaml
+  mdSaml.idp:
+    label: 'Identity Provider (IdP)'
+    parent: mdSaml
+  mdSaml.security:
+    label: 'Security / advanced'
+    parent: mdSaml
+
+settings:
+  # ---------------------------------------------------------------- general
+  md_saml.mdsamlSpBaseUrl:
+    label: 'SP base URL'
+    description: 'Is prepended automatically to entityId and the ACS/SLS URLs.'
+    type: string
+    default: ''
+    category: mdSaml.general
+  md_saml.publicMetadata:
+    label: 'Public SAML metadata'
+    description: 'Make the SAML metadata available without TYPO3 backend login.'
+    type: bool
+    default: false
+    category: mdSaml.general
+  md_saml.saml.strict:
+    label: 'Strict mode'
+    type: bool
+    default: true
+    category: mdSaml.general
+  md_saml.saml.debug:
+    label: 'Debug mode'
+    type: bool
+    default: false
+    category: mdSaml.general
+  md_saml.saml.baseurl:
+    label: 'Base URL override'
+    type: string
+    default: ''
+    category: mdSaml.general
+
+  # ---------------------------------------------------------- backend users
+  md_saml.be_users.saml.sp.entityId:
+    label: 'BE: SP entity ID'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+    category: mdSaml.be
+  md_saml.be_users.saml.sp.assertionConsumerService.url:
+    label: 'BE: ACS URL'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs'
+    category: mdSaml.be
+  md_saml.be_users.createIfNotExist:
+    label: 'BE: create user if not existing'
+    type: bool
+    default: true
+    category: mdSaml.be
+  md_saml.be_users.updateIfExist:
+    label: 'BE: update existing user'
+    type: bool
+    default: true
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.username:
+    label: 'BE: SAML attribute for username'
+    type: string
+    default: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname'
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.email:
+    label: 'BE: SAML attribute for email'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    category: mdSaml.be
+  md_saml.be_users.transformationArr.realName:
+    label: 'BE: SAML attribute for real name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
+    category: mdSaml.be
+
+  # --------------------------------------------------------- frontend users
+  md_saml.fe_users.active:
+    label: 'FE: enable SAML login'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.saml.sp.entityId:
+    label: 'FE: SP entity ID'
+    description: 'Example: /login/?loginProvider=1648123062&mdsamlmetadata'
+    type: string
+    default: ''
+    category: mdSaml.fe
+  md_saml.fe_users.saml.sp.assertionConsumerService.url:
+    label: 'FE: ACS URL'
+    description: 'Example: /login/?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs&logintype=login'
+    type: string
+    default: ''
+    category: mdSaml.fe
+  md_saml.fe_users.createIfNotExist:
+    label: 'FE: create user if not existing'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.updateIfExist:
+    label: 'FE: update existing user'
+    type: bool
+    default: true
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.username:
+    label: 'FE: SAML attribute for username'
+    type: string
+    default: 'http://schemas.microsoft.com/ws/2008/06/identity/claims/windowsaccountname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.email:
+    label: 'FE: SAML attribute for email'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.name:
+    label: 'FE: SAML attribute for name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/displayname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.first_name:
+    label: 'FE: SAML attribute for first name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname'
+    category: mdSaml.fe
+  md_saml.fe_users.transformationArr.last_name:
+    label: 'FE: SAML attribute for last name'
+    type: string
+    default: 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname'
+    category: mdSaml.fe
+
+  # ------------------------------------------------------------------- SP
+  md_saml.saml.sp.entityId:
+    label: 'SP entity ID'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&mdsamlmetadata'
+    category: mdSaml.sp
+  md_saml.saml.sp.assertionConsumerService.url:
+    label: 'SP ACS URL'
+    type: string
+    default: '/typo3/index.php?loginProvider=1648123062&login-provider=md_saml&login_status=login&acs'
+    category: mdSaml.sp
+  md_saml.saml.sp.assertionConsumerService.binding:
+    label: 'SP ACS binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'
+    category: mdSaml.sp
+  md_saml.saml.sp.singleLogoutService.url:
+    label: 'SP SLS URL'
+    type: string
+    default: '/index.php?loginProvider=1648123062&sls'
+    category: mdSaml.sp
+  md_saml.saml.sp.singleLogoutService.binding:
+    label: 'SP SLS binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.sp
+  md_saml.saml.sp.NameIDFormat:
+    label: 'SP NameID format'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+    category: mdSaml.sp
+  md_saml.saml.sp.x509cert:
+    label: 'SP certificate'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.sp
+
+  # ------------------------------------------------------------------ IdP
+  md_saml.saml.idp.entityId:
+    label: 'IdP entity ID'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleSignOnService.url:
+    label: 'IdP SSO URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleSignOnService.binding:
+    label: 'IdP SSO binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.url:
+    label: 'IdP SLO URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.responseUrl:
+    label: 'IdP SLO response URL'
+    type: string
+    default: ''
+    category: mdSaml.idp
+  md_saml.saml.idp.singleLogoutService.binding:
+    label: 'IdP SLO binding'
+    type: string
+    default: 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect'
+    category: mdSaml.idp
+  md_saml.saml.idp.x509cert:
+    label: 'IdP certificate'
+    description: 'Base64 content or file path (absolute, web-root relative or EXT:).'
+    type: text
+    default: ''
+    category: mdSaml.idp
+
+  # ------------------------------------------------------ security/advanced
+  md_saml.saml.compress.requests:
+    label: 'Compress requests'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.compress.responses:
+    label: 'Compress responses'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.nameIdEncrypted:
+    label: 'Encrypt NameID of logout requests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.authnRequestsSigned:
+    label: 'Sign AuthnRequests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.logoutRequestSigned:
+    label: 'Sign logout requests'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.logoutResponseSigned:
+    label: 'Sign logout responses'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.signMetadata:
+    label: 'Sign metadata'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantMessagesSigned:
+    label: 'Require signed messages'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantAssertionsEncrypted:
+    label: 'Require encrypted assertions'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantAssertionsSigned:
+    label: 'Require signed assertions'
+    description: 'Should be enabled if your IdP signs assertions (recommended for production).'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantNameId:
+    label: 'Require NameID'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.wantNameIdEncrypted:
+    label: 'Require encrypted NameID'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.wantXMLValidation:
+    label: 'Validate received XML'
+    type: bool
+    default: true
+    category: mdSaml.security
+  md_saml.saml.security.relaxDestinationValidation:
+    label: 'Relax destination validation'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.allowRepeatAttributeName:
+    label: 'Allow repeated attribute names'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.destinationStrictlyMatches:
+    label: 'Destination must match strictly'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.rejectUnsolicitedResponsesWithInResponseTo:
+    label: 'Reject unsolicited responses with InResponseTo'
+    type: bool
+    default: false
+    category: mdSaml.security
+  md_saml.saml.security.requestedAuthnContextComparison:
+    label: 'AuthnContext comparison'
+    type: string
+    default: 'exact'
+    category: mdSaml.security
+  md_saml.saml.security.signatureAlgorithm:
+    label: 'Signature algorithm'
+    type: string
+    default: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256'
+    category: mdSaml.security
+  md_saml.saml.security.digestAlgorithm:
+    label: 'Digest algorithm'
+    type: string
+    default: 'http://www.w3.org/2001/04/xmlenc#sha256'
+    category: mdSaml.security
+  md_saml.saml.security.encryption_algorithm:
+    label: 'Encryption algorithm'
+    type: string
+    default: 'http://www.w3.org/2009/xmlenc11#aes128-gcm'
+    category: mdSaml.security
+  md_saml.saml.security.lowercaseUrlencoding:
+    label: 'Lowercase URL encoding (ADFS)'
+    type: bool
+    default: false
+    category: mdSaml.security
